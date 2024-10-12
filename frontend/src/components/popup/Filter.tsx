@@ -65,6 +65,10 @@ const filterSpecs: { [k in Search.FilterKey]: FilterSpec } = {
         name: "Half semester",
         example: ["1", "2"],
     },
+    [Search.FilterKey.Status]: {
+        name: "Status",
+        example: ["Open", "Reopened", "Closed"],
+    },
 };
 
 export default memo(function Filter() {

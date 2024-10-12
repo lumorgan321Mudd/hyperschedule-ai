@@ -155,6 +155,7 @@ export enum FilterKey {
     Location = "loc",
     Credits = "cred",
     Half = "half",
+    Status = "status",
 }
 
 export const filterKeyRegexp = RegExp(
@@ -176,6 +177,10 @@ export type RangeFilter = {
     end: number | null;
 };
 
+export type StatusFilter = {
+    status: APIv4.SectionStatus;
+};
+
 export type FilterData = {
     [FilterKey.Department]: TextFilter;
     [FilterKey.Instructor]: TextFilter;
@@ -191,6 +196,7 @@ export type FilterData = {
     [FilterKey.Number]: RangeFilter;
     // we can technically use a range filter for half but probably shouldn't
     [FilterKey.Half]: TextFilter;
+    [FilterKey.Status]: StatusFilter;
 };
 
 export type Filter = {
@@ -353,6 +359,11 @@ export function filterSection(
                     section.identifier.half.number.toString()
                 )
                     return false;
+                break;
+            case FilterKey.Status:
+                if (section.status !== filter.data.status) {
+                    return false;
+                }
         }
     }
     return true;
