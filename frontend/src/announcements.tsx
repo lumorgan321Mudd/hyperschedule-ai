@@ -7,19 +7,6 @@ import type { Announcement } from "@lib/announcements";
 // an announcement is created
 export const announcements: Announcement[] = [
     {
-        id: 1,
-        message: (
-            <>
-                We received a report that the information regarding the
-                remaining seats and PERM counts have not been updated for the
-                Spring 2025 semester. We are currently investigating the issue.
-                As of the time of this announcement, we have not been able to
-                fetch the latest data from the CIS.
-            </>
-        ),
-        expires: null,
-    },
-    {
         id: 1710969267,
         message: (
             <>
