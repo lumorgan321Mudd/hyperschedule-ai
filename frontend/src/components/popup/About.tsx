@@ -1,5 +1,7 @@
 import Css from "./About.module.css";
+import { GITHUB_LINK } from "@lib/constants";
 import { memo } from "react";
+import * as Feather from "react-feather";
 
 type Maintainer = {
     name: string;
@@ -90,6 +92,24 @@ export default memo(function About() {
                         name={name}
                     />
                 ))}
+            </div>
+            <div className={Css.issues}>
+                <h3>Issues</h3>
+                <p>
+                    If you have encountered any bug related to the website please
+                    either file a bug report on{" "}
+                    <a href={`${GITHUB_LINK}/issues`} target="_blank">
+                        GitHub <Feather.ExternalLink />
+                    </a>{" "}
+                    or email us at hyperschedule@g.hmc.edu.
+                </p>
+                <p>
+                    If you have found any incorrect or inaccurate course
+                    information, please send us an email. We try our best to keep
+                    everything as up-to-date as possible, but we cannot manually go
+                    through the 20k+ classes in our database by hand and errors do
+                    slip through.
+                </p>
             </div>
             <h3>License</h3>
             <p>
