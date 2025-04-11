@@ -36,7 +36,7 @@ export const CxSectionIdRegex = RegExp(
     "^" +
         "(?<dept>[A-Z ]{4})" +
         "(?<number>\\d{3})" +
-        "(?<suffix>[A-Z0-9 ]{2}| {0,2})" +
+        "(?<suffix>[A-Z0-9]{0,2})( {0,2})" +
         "(?<affiliation>[A-Z]{2})-" +
         "(?<section>\\d{2}) " +
         "(?<term>FA|SU|SP)" +
