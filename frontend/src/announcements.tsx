@@ -7,20 +7,6 @@ import type { Announcement } from "@lib/announcements";
 // an announcement is created
 export const announcements: Announcement[] = [
     {
-        id: 1710969267,
-        message: (
-            <>
-                The previous version of Hyperschedule has been moved to{" "}
-                <a href="https://legacy.hyperschedule.io">
-                    legacy.hyperschedule.io
-                </a>{" "}
-                for historical purposes. It will no longer be maintained.
-            </>
-        ),
-        // one day after add deadline for fall 2024
-        expires: new Date(2024, 8, 10, 0, 0, 0),
-    },
-    {
         id: 1711657525,
         message: (
             <>
@@ -34,6 +20,19 @@ export const announcements: Announcement[] = [
             </>
         ),
         expires: null,
+    },
+    {
+        id: 1711657526,
+        message: (
+            <>
+                Hyperschedule is looking for new maintainers. If you are
+                interested, please contact us via{" "}
+                <a href="mailto:hyperschedule@g.hmc.edu">
+                    hyperschedule@g.hmc.edu
+                </a>
+            </>
+        ),
+        expires: new Date(2025, 9, 0, 0, 0, 0),
     },
 ];
 
