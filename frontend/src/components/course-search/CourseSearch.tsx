@@ -241,10 +241,13 @@ const CourseSearchResults = memo(function CourseSearchResults(props: {
                 <CourseSearchEnd text="no courses in active term found" />
                 <MultiTermsSearchMenu />
 
-                <MultiTermsSearchResults
-                    multiTermsSections={props.multiTermsSections}
-                    enabled={props.multiTermsSearchEnabled}
-                />
+                {props.multiTermsSearchEnabled ? (
+                    <MultiTermsSearchResults
+                        multiTermsSections={props.multiTermsSections}
+                    />
+                ) : (
+                    <></>
+                )}
             </div>
         );
 
@@ -255,7 +258,7 @@ const CourseSearchResults = memo(function CourseSearchResults(props: {
                 ref={viewportRef}
                 onScroll={(ev) => setScroll(ev.currentTarget.scrollTop)}
             >
-                {viewportBounds && rowBounds && rowBounds.height > 0 && (
+                {viewportBounds && rowBounds && (
                     <>
                         <div
                             style={{
@@ -285,10 +288,13 @@ const CourseSearchResults = memo(function CourseSearchResults(props: {
                     </>
                 )}
 
-                <MultiTermsSearchResults
-                    multiTermsSections={props.multiTermsSections}
-                    enabled={props.multiTermsSearchEnabled}
-                />
+                {props.multiTermsSearchEnabled ? (
+                    <MultiTermsSearchResults
+                        multiTermsSections={props.multiTermsSections}
+                    />
+                ) : (
+                    <></>
+                )}
             </div>
             <div className={Css.hiddenMeasureContainer}>
                 <div ref={rowMeasureRef}>
@@ -415,124 +421,18 @@ const MultiTermsSearchMenu = memo(function MultiTermsSearchMenu() {
     );
 });
 
-const VirtualizedCourseList = memo(function VirtualizedCourseList(props: {
-    sections: APIv4.Section[];
-    renderRow: (section: APIv4.Section) => JSX.Element;
-    containerClassName?: string;
-}) {
-    const [rowBounds, rowMeasureRef] = useMeasure<HTMLDivElement>();
-    const [viewportBounds, viewportRef] = useMeasure<HTMLDivElement>();
-    const [scroll, setScroll] = React.useState(0);
-
-    const [indexStart, indexEnd] = React.useMemo(
-        () =>
-            computeIndices({
-                scroll,
-                rowHeight: rowBounds?.height ?? 1,
-                viewportHeight: viewportBounds?.height ?? 0,
-                expandHeight: 0, // Multi-term results don't expand
-            }),
-        [rowBounds, viewportBounds, scroll],
-    );
-
-    const visibleSections = React.useMemo(
-        () =>
-            props.sections
-                .slice(indexStart, indexEnd)
-                .map((section, i) => ({ index: i + indexStart, section })),
-        [props.sections, indexStart, indexEnd],
-    );
-
-    // Always render the container, even if empty
-    return (
-        <>
-            <div
-                className={
-                    props.containerClassName ?? Css.multiTermsSearchResults
-                }
-                ref={viewportRef}
-                onScroll={(ev) => setScroll(ev.currentTarget.scrollTop)}
-            >
-                {props.sections.length > 0 &&
-                    viewportBounds &&
-                    rowBounds &&
-                    rowBounds.height > 0 && (
-                        <div
-                            style={{
-                                height: `${
-                                    props.sections.length * rowBounds.height
-                                }px`,
-                                position: "relative",
-                            }}
-                        >
-                            {visibleSections.map(({ index, section }) => (
-                                <div
-                                    key={APIv4.stringifySectionCodeLong(
-                                        section.identifier,
-                                    )}
-                                    style={{
-                                        position: "absolute",
-                                        top: `${index * rowBounds.height}px`,
-                                        width: "100%",
-                                    }}
-                                >
-                                    {props.renderRow(section)}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-            </div>
-            <div
-                style={{
-                    visibility: "hidden",
-                    position: "absolute",
-                    top: "-9999px",
-                }}
-            >
-                <div ref={rowMeasureRef}>
-                    {props.sections[0] && props.renderRow(props.sections[0])}
-                </div>
-            </div>
-        </>
-    );
-});
-
 const MultiTermsSearchResults = memo(function MultiTermsSearchResults(props: {
     multiTermsSections: APIv4.Section[] | undefined;
-    enabled: boolean;
 }) {
     const activeTerm = useUserStore((user) => user.activeTerm);
     const setPopup = useStore((store) => store.setPopup);
 
-    const renderMultiTermRow = useCallback(
-        (section: APIv4.Section) => (
-            <CourseRow
-                section={section}
-                expand={false}
-                fromOtherTerm={true}
-                onClick={() => {
-                    setPopup({
-                        option: PopupOption.SectionDetail,
-                        section: section,
-                    });
-                }}
-            />
-        ),
-        [setPopup],
-    );
-
-    const sections = React.useMemo(() => {
-        return props.multiTermsSections?.filter((section) => {
-            return !(
-                section.identifier.term === activeTerm.term &&
-                section.identifier.year === activeTerm.year
-            );
-        });
-    }, [props.multiTermsSections, activeTerm]);
-
-    if (!props.enabled) {
-        return null;
-    }
+    const sections = props.multiTermsSections?.filter((section) => {
+        return !(
+            section.identifier.term === activeTerm.term &&
+            section.identifier.year === activeTerm.year
+        );
+    });
 
     if (sections === undefined) {
         return (
@@ -544,10 +444,23 @@ const MultiTermsSearchResults = memo(function MultiTermsSearchResults(props: {
 
     return (
         <>
-            <VirtualizedCourseList
-                sections={sections}
-                renderRow={renderMultiTermRow}
-            />
+            <div className={Css.multiTermsSearchResults}>
+                {sections.map((section) => (
+                    <CourseRow
+                        key={APIv4.stringifySectionCodeLong(section.identifier)}
+                        section={section}
+                        expand={false}
+                        fromOtherTerm={true}
+                        onClick={() => {
+                            setPopup({
+                                option: PopupOption.SectionDetail,
+                                section: section,
+                            });
+                        }}
+                    />
+                ))}
+            </div>
+
             <CourseSearchEnd
                 text={
                     sections.length === 0
