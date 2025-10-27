@@ -24,7 +24,16 @@ function preprocessDataFromString<T>(
     inputFileName: string,
 ): T[] {
     const result: T[] = [];
-    const obj = JSON.parse(data);
+    // Strip trailing # character that sometimes appears in API responses
+    const cleanedData = data.trim().replace(/#$/, "");
+
+    // Handle empty data
+    if (!cleanedData) {
+        logger.warn(`Input data for ${inputFileName} is empty`);
+        return [];
+    }
+
+    const obj = JSON.parse(cleanedData);
     if (!Array.isArray(obj)) {
         logger.error(`Input data for ${inputFileName} is not an array`);
         return [];
