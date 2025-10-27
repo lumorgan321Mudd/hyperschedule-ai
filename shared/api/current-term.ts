@@ -16,6 +16,6 @@ import type { TermIdentifier } from "./v4/index";
 import { Term } from "./v4/index";
 
 export const CURRENT_TERM: Readonly<TermIdentifier> = {
-    year: 2025,
-    term: Term.fall,
+    year: 2026,
+    term: Term.spring,
 };
