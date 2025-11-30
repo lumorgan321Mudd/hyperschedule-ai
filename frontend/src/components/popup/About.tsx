@@ -117,9 +117,7 @@ export default memo(function About() {
                 <a href="https://spdx.org/licenses/BSD-3-Clause-No-Military-License.html">
                     BSD 3-Clause No Military License
                 </a>
-                . By using this program, you acknowledge that you are not
-                voluntarily involved in the design, construction, operation,
-                maintenance, or training of any military facility.
+                .
             </p>
         </div>
     );
