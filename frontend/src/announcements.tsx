@@ -10,13 +10,11 @@ export const announcements: Announcement[] = [
         id: 1711657525,
         message: (
             <>
-                Hyperschedule is now licensed under the{" "}
+                Hyperschedule is licensed under the{" "}
                 <a href="https://spdx.org/licenses/BSD-3-Clause-No-Military-License.html">
                     BSD 3-Clause No Military
                 </a>{" "}
-                License. By continuing using this program, you acknowledge that
-                you are not voluntarily involved in the design, construction,
-                operation, maintenance, or training of any military facility.
+                License.
             </>
         ),
         expires: null,
