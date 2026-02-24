@@ -1,0 +1,173 @@
+{
+    "school": "Harvey Mudd College",
+    "school_code": "hmc",
+    "catalog_year": "2025-2026",
+    "last_updated": "2026-02-01",
+    "general_requirements": [
+        {
+            "name": "Common Core",
+            "description": "Required courses for all HMC students",
+            "courses": [
+                { "course": "MATH019 HM", "title": "Single and Multivariable Calculus", "credits": 1.5 },
+                { "course": "MATH040 HM", "title": "Introduction to Linear Algebra", "credits": 1.0 },
+                { "course": "MATH045 HM", "title": "Introduction to Probability and Statistics", "credits": 1.0 },
+                { "course": "MATH055 HM", "title": "Discrete Mathematics", "credits": 1.0 },
+                { "course": "CSCI005 HM", "title": "Introduction to Computer Science", "credits": 1.0 },
+                { "course": "PHYS024 HM", "title": "Mechanics and Wave Motion", "credits": 1.0 },
+                { "course": "PHYS051 HM", "title": "Electromagnetic Theory and Optics", "credits": 1.0 },
+                { "course": "PHYS023 HM", "title": "Special Relativity", "credits": 0.5 },
+                { "course": "CHEM023A HM", "title": "Chemistry in the Modern World", "credits": 1.5 },
+                { "course": "BIOL046 HM", "title": "Introductory Biology", "credits": 1.5 },
+                { "course": "ENGR079 HM", "title": "Engineering Design and Manufacturing", "credits": 1.5 },
+                { "course": "WRIT001 HM", "title": "Introduction to Academic Writing", "credits": 1.0 }
+            ],
+            "creditsRequired": 13.5
+        },
+        {
+            "name": "HSA Requirements",
+            "description": "Humanities, Social Sciences, and the Arts",
+            "courses": [],
+            "creditsRequired": 10,
+            "coursesRequired": 10
+        },
+        {
+            "name": "PE Requirements",
+            "description": "Physical Education",
+            "courses": [],
+            "creditsRequired": 3,
+            "coursesRequired": 3
+        }
+    ],
+    "majors": {
+        "computer_science": {
+            "name": "Computer Science",
+            "department": "Computer Science",
+            "major_courses": {
+                "required": [
+                    { "course": "CSCI060 HM", "title": "Principles of Computer Science", "credits": 1.0 },
+                    { "course": "CSCI070 HM", "title": "Data Structures and Program Development", "credits": 1.0 },
+                    { "course": "CSCI081 HM", "title": "Computability and Logic", "credits": 1.0 },
+                    { "course": "CSCI105 HM", "title": "Computer Systems", "credits": 1.0 },
+                    { "course": "CSCI131 HM", "title": "Programming Languages", "credits": 1.0 },
+                    { "course": "CSCI140 HM", "title": "Algorithms", "credits": 1.0 },
+                    { "course": "CSCI183 HM", "title": "CS Colloquium", "credits": 0.5 },
+                    { "course": "MATH131 HM", "title": "Mathematical Analysis I", "credits": 1.0 }
+                ],
+                "electives": {
+                    "description": "Three additional CS electives at or above CSCI100",
+                    "coursesRequired": 3,
+                    "level": "100+"
+                },
+                "clinic": {
+                    "description": "CS Clinic (senior year)",
+                    "courses": [
+                        { "course": "CSCI183 HM", "title": "CS Clinic", "credits": 1.5 }
+                    ]
+                }
+            }
+        },
+        "mathematics": {
+            "name": "Mathematics",
+            "department": "Mathematics",
+            "major_courses": {
+                "required": [
+                    { "course": "MATH131 HM", "title": "Mathematical Analysis I", "credits": 1.0 },
+                    { "course": "MATH132 HM", "title": "Mathematical Analysis II", "credits": 1.0 },
+                    { "course": "MATH171 HM", "title": "Abstract Algebra I", "credits": 1.0 },
+                    { "course": "MATH073 HM", "title": "Linear Algebra", "credits": 1.0 }
+                ],
+                "electives": {
+                    "description": "Five additional mathematics courses at or above MATH100",
+                    "coursesRequired": 5,
+                    "level": "100+"
+                }
+            }
+        },
+        "physics": {
+            "name": "Physics",
+            "department": "Physics",
+            "major_courses": {
+                "required": [
+                    { "course": "PHYS111 HM", "title": "Theoretical Mechanics", "credits": 1.0 },
+                    { "course": "PHYS116 HM", "title": "Quantum Mechanics", "credits": 1.0 },
+                    { "course": "PHYS117 HM", "title": "Statistical Mechanics and Thermodynamics", "credits": 1.0 },
+                    { "course": "PHYS134 HM", "title": "Electromagnetic Fields", "credits": 1.0 },
+                    { "course": "PHYS105 HM", "title": "Advanced Lab", "credits": 1.0 }
+                ],
+                "electives": {
+                    "description": "Two additional physics or astronomy electives at or above PHYS100",
+                    "coursesRequired": 2,
+                    "level": "100+"
+                }
+            }
+        },
+        "engineering": {
+            "name": "Engineering",
+            "department": "Engineering",
+            "major_courses": {
+                "required": [
+                    { "course": "ENGR059 HM", "title": "Introduction to Electrical Engineering", "credits": 1.0 },
+                    { "course": "ENGR072 HM", "title": "Engineering Mathematics", "credits": 1.0 },
+                    { "course": "ENGR080 HM", "title": "Experimental Engineering", "credits": 1.5 },
+                    { "course": "ENGR101 HM", "title": "Advanced Systems Engineering", "credits": 1.0 },
+                    { "course": "ENGR111 HM", "title": "Engineering Seminar", "credits": 0.5 }
+                ],
+                "electives": {
+                    "description": "Engineering electives to complete the major",
+                    "coursesRequired": 4,
+                    "level": "100+"
+                }
+            }
+        },
+        "biology": {
+            "name": "Biology",
+            "department": "Biology",
+            "major_courses": {
+                "required": [
+                    { "course": "BIOL101 HM", "title": "Cell Biology", "credits": 1.0 },
+                    { "course": "BIOL108 HM", "title": "Genetics", "credits": 1.0 },
+                    { "course": "BIOL113 HM", "title": "Evolutionary Biology", "credits": 1.0 },
+                    { "course": "CHEM056 HM", "title": "Organic Chemistry I", "credits": 1.0 }
+                ],
+                "electives": {
+                    "description": "Three additional biology electives at or above BIOL100",
+                    "coursesRequired": 3,
+                    "level": "100+"
+                }
+            }
+        },
+        "chemistry": {
+            "name": "Chemistry",
+            "department": "Chemistry",
+            "major_courses": {
+                "required": [
+                    { "course": "CHEM056 HM", "title": "Organic Chemistry I", "credits": 1.0 },
+                    { "course": "CHEM104 HM", "title": "Physical Chemistry", "credits": 1.0 },
+                    { "course": "CHEM105 HM", "title": "Analytical Chemistry", "credits": 1.0 },
+                    { "course": "CHEM115 HM", "title": "Advanced Organic Chemistry", "credits": 1.0 }
+                ],
+                "electives": {
+                    "description": "Two additional chemistry electives at or above CHEM100",
+                    "coursesRequired": 2,
+                    "level": "100+"
+                }
+            }
+        },
+        "mathematical_and_computational_biology": {
+            "name": "Mathematical and Computational Biology",
+            "departments": ["Mathematics", "Biology", "Computer Science"],
+            "major_courses": {
+                "required": [
+                    { "course": "BIOL101 HM", "title": "Cell Biology", "credits": 1.0 },
+                    { "course": "MATH131 HM", "title": "Mathematical Analysis I", "credits": 1.0 },
+                    { "course": "MCBI118 HM", "title": "Mathematical Biology", "credits": 1.0 },
+                    { "course": "MCBI187 HM", "title": "Computational Biology", "credits": 1.0 }
+                ],
+                "electives": {
+                    "description": "Electives from biology, math, and CS",
+                    "coursesRequired": 4
+                }
+            }
+        }
+    }
+}

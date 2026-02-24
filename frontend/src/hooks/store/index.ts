@@ -48,6 +48,9 @@ export type Store = WithSetters<{
 export const enum MainTab {
     CourseSearch = "CourseSearch",
     Schedule = "Schedule",
+    GradRequirements = "GradRequirements",
+    GradPlan = "GradPlan",
+    Advisor = "Advisor",
 }
 
 export const enum Theme {

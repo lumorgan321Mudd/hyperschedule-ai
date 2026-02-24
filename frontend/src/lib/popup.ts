@@ -8,6 +8,9 @@ export const enum PopupOption {
     ManageSchedules = "manage-schedules",
     ExportCalendar = "export-calendar",
     About = "about",
+    RoleSelect = "role-select",
+    CreateBlock = "create-block",
+    ShareBlock = "share-block",
 }
 
 export type Popup =
@@ -28,4 +31,10 @@ export type Popup =
     | { option: PopupOption.ManageSchedules }
     | { option: PopupOption.ExportCalendar }
     | { option: PopupOption.About }
+    | { option: PopupOption.RoleSelect }
+    | { option: PopupOption.CreateBlock }
+    | {
+          option: PopupOption.ShareBlock;
+          blockId: APIv4.GraduationBlockId;
+      }
     | null;

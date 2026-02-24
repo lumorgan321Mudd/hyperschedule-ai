@@ -1,0 +1,38 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 0.5rem;
+
+    & h2 {
+        margin: 0;
+    }
+
+    & label {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        font-size: 0.9rem;
+    }
+
+    & input {
+        padding: 0.375rem 0.5rem;
+        border: 1px solid var(--bg-2);
+        border-radius: 0.25rem;
+        background-color: var(--bg-1);
+        color: var(--fg-0);
+        font-family: inherit;
+        font-size: 0.9rem;
+    }
+}
+
+.description {
+    color: var(--fg-1);
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.shareButton {
+    align-self: flex-end;
+    padding: 0.375rem 1rem !important;
+}

@@ -1,0 +1,50 @@
+{
+    "school": "Scripps College",
+    "school_code": "scripps",
+    "catalog_year": "2025-2026",
+    "last_updated": "2026-02-01",
+    "general_requirements": [
+        {
+            "name": "Core Curriculum",
+            "description": "Three interdisciplinary core courses spanning the humanities, social sciences, and natural sciences",
+            "courses": [],
+            "coursesRequired": 3
+        },
+        {
+            "name": "Breadth Requirements",
+            "description": "Courses in Fine Arts, Letters, Natural Science, Social Sciences, Women's/Gender/Sexuality Studies",
+            "courses": [],
+            "coursesRequired": 5
+        },
+        {
+            "name": "Foreign Language",
+            "description": "Proficiency through third semester or equivalent",
+            "courses": [],
+            "coursesRequired": 3
+        },
+        {
+            "name": "Race and Ethnic Studies",
+            "description": "One course addressing race and ethnicity",
+            "courses": [],
+            "coursesRequired": 1
+        }
+    ],
+    "majors": {
+        "biology": {
+            "name": "Biology",
+            "department": "Biology"
+        },
+        "psychology": {
+            "name": "Psychology",
+            "department": "Psychology"
+        },
+        "media_studies": {
+            "name": "Media Studies",
+            "department": "Media Studies"
+        },
+        "english": {
+            "name": "English",
+            "department": "English"
+        }
+    }
+}

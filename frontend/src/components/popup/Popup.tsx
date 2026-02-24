@@ -10,6 +10,9 @@ import classNames from "classnames";
 import { Settings } from "./Settings";
 import ExportCalendar from "@components/popup/ExportCalendar";
 import About from "@components/popup/About";
+import RoleSelect from "@components/popup/RoleSelect";
+import CreateBlock from "@components/popup/CreateBlock";
+import ShareBlock from "@components/popup/ShareBlock";
 import { memo } from "react";
 
 function PopupBox(props: {
@@ -91,6 +94,24 @@ export default memo(function Popup() {
             return (
                 <PopupBox>
                     <About />
+                </PopupBox>
+            );
+        case PopupOption.RoleSelect:
+            return (
+                <PopupBox>
+                    <RoleSelect />
+                </PopupBox>
+            );
+        case PopupOption.CreateBlock:
+            return (
+                <PopupBox>
+                    <CreateBlock />
+                </PopupBox>
+            );
+        case PopupOption.ShareBlock:
+            return (
+                <PopupBox>
+                    <ShareBlock blockId={popup.blockId} />
                 </PopupBox>
             );
         default:

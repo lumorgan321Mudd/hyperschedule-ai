@@ -13,8 +13,9 @@ import { schoolCodeToName } from "hyperschedule-shared/api/v4";
 import * as Feather from "react-feather";
 import classNames from "classnames";
 import Cookies from "js-cookie";
-import { useState } from "react";
-import { memo } from "react";
+import { useState, useCallback, memo } from "react";
+import { apiFetch } from "@lib/api";
+import { toast } from "react-toastify";
 
 export const Settings = memo(function Settings() {
     return (
@@ -22,6 +23,7 @@ export const Settings = memo(function Settings() {
             <h2 className={Css.title}>Settings</h2>
             <AppearanceSettings />
             <SectionConflictSettings />
+            <RoleSettings />
             <AccountSettings />
             <DataViewer />
             <ReportIssues />
@@ -41,6 +43,38 @@ function logout() {
     });
     logoutLocal();
 }
+
+const RoleSettings = memo(function RoleSettings() {
+    const serverData = useUserStore((store) => store.server);
+    const getUser = useUserStore((store) => store.getUser);
+
+    const currentRole = serverData?.role;
+
+    const handleToggle = useCallback(async () => {
+        const newRole = currentRole === "advisor" ? "student" : "advisor";
+        try {
+            await apiFetch.setRole({ role: newRole });
+            await getUser();
+            toast.success(`Switched to ${newRole} mode`);
+        } catch {
+            toast.error("Failed to change role");
+        }
+    }, [currentRole, getUser]);
+
+    if (serverData === null) return null;
+
+    return (
+        <div className={Css.appearance}>
+            <h3 className={Css.title}>Role</h3>
+            <span>Advisor Mode</span>
+            <Slider
+                value={currentRole === "advisor"}
+                onToggle={handleToggle}
+                text=""
+            />
+        </div>
+    );
+});
 
 const AccountSettings = memo(function AccountSettings() {
     const serverData = useUserStore((store) => store.server);

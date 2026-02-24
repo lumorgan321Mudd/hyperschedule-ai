@@ -1,6 +1,6 @@
 import { createLogger } from "../logger";
 import { connectToDb, closeDb } from "./connector";
-import { DB_URL } from "./credentials";
+import { requireDbUrl } from "./credentials";
 import { updateSections } from "./models/course";
 import { loadAllForTerm } from "../hmc-api/fetcher/fetch";
 import { linkCourseData } from "../hmc-api/data-linker";
@@ -10,7 +10,7 @@ import * as APIv4 from "hyperschedule-shared/api/v4";
 const logger = createLogger("db.init");
 
 logger.info("Connecting to db...");
-await connectToDb(DB_URL);
+await connectToDb(requireDbUrl());
 logger.info("db connected");
 
 //const term = { term: APIv4.Term.spring, year: 2022 };

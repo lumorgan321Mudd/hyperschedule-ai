@@ -1,0 +1,54 @@
+{
+    "school": "Pomona College",
+    "school_code": "pomona",
+    "catalog_year": "2025-2026",
+    "last_updated": "2026-02-01",
+    "general_requirements": [
+        {
+            "name": "Breadth of Study",
+            "description": "One course in each of six areas: Creative Expression, Social Institutions and Human Behavior, History/Values/Ethics, Physical and Biological Sciences, Mathematical Reasoning, and Letters",
+            "courses": [],
+            "coursesRequired": 6
+        },
+        {
+            "name": "First-Year Seminar (ID1)",
+            "description": "Intensive writing seminar taken in first year",
+            "courses": [],
+            "coursesRequired": 1
+        },
+        {
+            "name": "Foreign Language",
+            "description": "Proficiency through third semester or equivalent",
+            "courses": [],
+            "coursesRequired": 3
+        },
+        {
+            "name": "Physical Education",
+            "description": "Two PE courses",
+            "courses": [],
+            "coursesRequired": 2
+        }
+    ],
+    "majors": {
+        "computer_science": {
+            "name": "Computer Science",
+            "department": "Computer Science"
+        },
+        "mathematics": {
+            "name": "Mathematics",
+            "department": "Mathematics"
+        },
+        "economics": {
+            "name": "Economics",
+            "department": "Economics"
+        },
+        "politics": {
+            "name": "Politics",
+            "department": "Politics"
+        },
+        "english": {
+            "name": "English",
+            "department": "English"
+        }
+    }
+}

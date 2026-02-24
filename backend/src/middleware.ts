@@ -62,14 +62,17 @@ export function middleware(
         switch (parsed.hostname) {
             case "localhost":
             case "127.0.0.1":
-                if (process.env.NODE_ENV !== "production")
+                if (process.env.NODE_ENV !== "production") {
                     res.header("Access-Control-Allow-Origin", parsed.origin);
+                    res.header("Access-Control-Allow-Credentials", "true");
+                }
                 break;
             case "hyperschedule.io":
             case "beta.hyperschedule.io":
             case "legacy.hyperschedule.io":
             case "nightly.hyperschedule.io":
                 res.header("Access-Control-Allow-Origin", parsed.origin);
+                res.header("Access-Control-Allow-Credentials", "true");
                 res.header("Vary", "Origin");
                 break;
         }

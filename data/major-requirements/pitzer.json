@@ -1,0 +1,44 @@
+{
+    "school": "Pitzer College",
+    "school_code": "pitzer",
+    "catalog_year": "2025-2026",
+    "last_updated": "2026-02-01",
+    "general_requirements": [
+        {
+            "name": "Educational Objectives",
+            "description": "Courses in Social Responsibility, Intercultural Understanding, Interdisciplinary Learning, Written Expression, Oral Communication",
+            "courses": [],
+            "coursesRequired": 6
+        },
+        {
+            "name": "First-Year Seminar",
+            "description": "Intensive seminar in the first year",
+            "courses": [],
+            "coursesRequired": 1
+        },
+        {
+            "name": "Foreign Language",
+            "description": "Proficiency through third semester or equivalent",
+            "courses": [],
+            "coursesRequired": 3
+        }
+    ],
+    "majors": {
+        "organizational_studies": {
+            "name": "Organizational Studies",
+            "department": "Organizational Studies"
+        },
+        "psychology": {
+            "name": "Psychology",
+            "department": "Psychology"
+        },
+        "environmental_analysis": {
+            "name": "Environmental Analysis",
+            "department": "Environmental Analysis"
+        },
+        "sociology": {
+            "name": "Sociology",
+            "department": "Sociology"
+        }
+    }
+}

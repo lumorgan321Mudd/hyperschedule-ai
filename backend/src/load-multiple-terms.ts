@@ -7,7 +7,7 @@ import { createLogger } from "./logger";
 
 const logger = createLogger("fetch-all");
 
-import { DB_URL } from "./db/credentials";
+import { requireDbUrl } from "./db/credentials";
 import * as APIv4 from "hyperschedule-shared/api/v4";
 import { connectToDb, closeDb } from "./db/connector";
 import { updateSections } from "./db/models/course";
@@ -32,7 +32,7 @@ const TERMS_TO_LOAD: Readonly<APIv4.TermIdentifier[]> = [
 ];
 
 async function loadMultipleTerms(): Promise<void> {
-    await connectToDb(DB_URL);
+    await connectToDb(requireDbUrl());
     logger.info("Connected to DB");
 
     for (const term of TERMS_TO_LOAD) {

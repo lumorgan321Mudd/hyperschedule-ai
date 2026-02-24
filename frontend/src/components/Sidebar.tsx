@@ -93,12 +93,15 @@ export default function Sidebar() {
                 {serverData === null && !confirmedGuest ? (
                     <></>
                 ) : (
-                    <>
-                        <ScheduleSelect />
-                        <SelectedList />
+                    (tab === MainTab.CourseSearch ||
+                        tab === MainTab.Schedule) && (
+                        <>
+                            <ScheduleSelect />
+                            <SelectedList />
 
-                        <ScheduleRendering />
-                    </>
+                            <ScheduleRendering />
+                        </>
+                    )
                 )}
                 <ThemeSlider />
             </div>

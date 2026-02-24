@@ -12,7 +12,7 @@ if (prefix === undefined) {
     throw Error("FETCHER_PREFIX environment variable undefined");
 }
 
-import { DB_URL } from "./db/credentials";
+import { requireDbUrl } from "./db/credentials";
 import { CURRENT_TERM } from "hyperschedule-shared/api/current-term";
 import * as APIv4 from "hyperschedule-shared/api/v4";
 import { connectToDb, closeDb } from "./db/connector";
@@ -20,7 +20,7 @@ import { updateSections } from "./db/models/course";
 import { linkCourseData } from "./hmc-api/data-linker";
 import { termIsBefore } from "hyperschedule-shared/api/v4";
 
-await connectToDb(DB_URL);
+await connectToDb(requireDbUrl());
 
 // we loop through them one-by-one instead of in-parallel to not overload the
 // school server

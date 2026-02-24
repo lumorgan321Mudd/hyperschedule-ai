@@ -5,6 +5,11 @@ import {
     termIsBefore,
 } from "./course";
 import { z } from "zod";
+import {
+    UserRole,
+    GraduationBlockId,
+    GraduationBlock,
+} from "./graduation-block";
 
 export const UserId = z.string().regex(/u~[A-Za-z0-9\-_]{22}/);
 export const ScheduleId = z.string().regex(/s~[A-Za-z0-9\-_]{22}/);
@@ -40,6 +45,10 @@ export const ServerUser = z.object({
     eppn: z.string(),
     school: SchoolEnum,
     schedules: z.record(ScheduleId, UserSchedule),
+    role: UserRole.optional(),
+    graduationBlocks: z
+        .record(GraduationBlockId, GraduationBlock)
+        .optional(),
 });
 export type ServerUser = z.infer<typeof ServerUser>;
 

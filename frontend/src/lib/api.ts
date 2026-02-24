@@ -54,6 +54,37 @@ export const schema = {
             status: 204,
         },
     }),
+    graduationBlocks: Schema.route("/v4/graduation-blocks", {
+        get: {
+            return: z.record(z.string(), APIv4.GraduationBlock),
+            status: 200,
+        },
+        post: {
+            body: APIv4.CreateBlockRequest,
+            return: APIv4.CreateBlockResponse,
+            status: 200,
+        },
+    }),
+    shareBlock: Schema.route("/v4/graduation-blocks/share", {
+        post: {
+            body: APIv4.ShareBlockRequest,
+            return: APIv4.ShareBlockResponse,
+            status: 200,
+        },
+    }),
+    advisorRole: Schema.route("/v4/advisor/role", {
+        patch: {
+            body: APIv4.SetUserRoleRequest,
+            return: z.void(),
+            status: 204,
+        },
+    }),
+    sharedSnapshots: Schema.route("/v4/advisor/shared-snapshots", {
+        get: {
+            return: APIv4.GetSharedSnapshotsResponse,
+            status: 200,
+        },
+    }),
 };
 
 function validateResponse<Schema extends Schema.MethodSchemaAny>(
@@ -138,4 +169,65 @@ export const apiFetch = {
     deleteSection: schemaFetch(schema.section, "delete"),
     setSectionAttrs: schemaFetch(schema.section, "patch"),
     replaceSections: schemaFetch(schema.replaceSections, "post"),
+    // Graduation blocks
+    getBlocks: schemaFetch(schema.graduationBlocks, "get"),
+    createBlock: schemaFetch(schema.graduationBlocks, "post"),
+    shareBlock: schemaFetch(schema.shareBlock, "post"),
+    // Advisor
+    setRole: schemaFetch(schema.advisorRole, "patch"),
+    getSharedSnapshots: schemaFetch(schema.sharedSnapshots, "get"),
 };
+
+// Dynamic path API calls (for routes with URL parameters)
+export async function apiBlockAction(
+    blockId: string,
+    method: string,
+    body?: unknown,
+): Promise<Response> {
+    return fetchWithToast(`${__API_URL__}/v4/graduation-blocks/${blockId}`, {
+        method,
+        credentials: "include",
+        ...(body
+            ? {
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(body),
+              }
+            : {}),
+    });
+}
+
+export async function apiBlockSemesterAction(
+    blockId: string,
+    semesterId: string | undefined,
+    method: string,
+    body?: unknown,
+): Promise<Response> {
+    const path = semesterId
+        ? `/v4/graduation-blocks/${blockId}/semester/${semesterId}`
+        : `/v4/graduation-blocks/${blockId}/semester`;
+    return fetchWithToast(`${__API_URL__}${path}`, {
+        method,
+        credentials: "include",
+        ...(body
+            ? {
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(body),
+              }
+            : {}),
+    });
+}
+
+export async function apiApproveSnapshot(
+    snapshotId: string,
+    body: unknown,
+): Promise<Response> {
+    return fetchWithToast(
+        `${__API_URL__}/v4/advisor/shared-snapshots/${snapshotId}/approve`,
+        {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        },
+    );
+}

@@ -19,6 +19,7 @@ export type Store = {
     server: Omit<APIv4.ServerUser, "schedules"> | null;
     activeScheduleId: APIv4.ScheduleId | null;
     activeTerm: APIv4.TermIdentifier;
+    graduationBlocks: Record<string, APIv4.GraduationBlock>;
 
     // mutators
     getUser: () => Promise<void>;
@@ -40,6 +41,9 @@ export type Store = {
     ) => Promise<APIv4.ScheduleId>;
     setActiveTerm: (term: APIv4.TermIdentifier) => void;
     setActiveScheduleId: (scheduleId: APIv4.ScheduleId) => void;
+    setGraduationBlocks: (
+        blocks: Record<string, APIv4.GraduationBlock>,
+    ) => void;
 };
 
 function firstValidScheduleId(
@@ -100,7 +104,13 @@ const init: Zustand.StateCreator<Store> = (set, get) => {
 
         set({
             schedules: user.schedules,
-            server: pick("eppn", "school", "_id")(user),
+            server: {
+                _id: user._id,
+                eppn: user.eppn,
+                school: user.school,
+                role: user.role,
+            },
+            graduationBlocks: user.graduationBlocks ?? {},
         });
     }
 
@@ -155,6 +165,8 @@ const init: Zustand.StateCreator<Store> = (set, get) => {
         hasConfirmedGuest: false,
         schedules: {},
         server: null,
+        graduationBlocks: {},
+        setGraduationBlocks: (blocks) => set({ graduationBlocks: blocks }),
         scheduleAddSection: (request) => {
             if (get().server) apiFetch.addSection(request).catch(() => {});
 
@@ -317,6 +329,7 @@ export const useUserStore = Zustand.create<Store>()(
                 "activeScheduleId",
                 "activeTerm",
                 "server",
+                "graduationBlocks",
             ),
         }),
     ),

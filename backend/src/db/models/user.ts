@@ -1,9 +1,11 @@
 import { collections } from "../collections";
 import { uuid4 } from "../utils";
 import * as APIv4 from "hyperschedule-shared/api/v4";
+import type { UserRole } from "hyperschedule-shared/api/v4";
 
 import { createLogger } from "../../logger";
 import { CURRENT_TERM } from "hyperschedule-shared/api/current-term";
+import { staticMode, staticUsers } from "../static-store";
 import type { UpdateFilter } from "mongodb";
 
 const logger = createLogger("db.user");
@@ -77,6 +79,12 @@ export async function getOrCreateUser(
 }
 
 export async function getUser(userId: string): Promise<APIv4.ServerUser> {
+    if (staticMode) {
+        const user = staticUsers.get(userId);
+        if (!user) throw Error("User not found");
+        return user;
+    }
+
     const user = await collections.users.findOne({ _id: userId });
     if (user === null) {
         throw Error("User not found");
@@ -513,4 +521,38 @@ export async function copySchedules(
             },
         },
     );
+}
+
+export async function setUserRole(
+    userId: APIv4.UserId,
+    role: UserRole,
+): Promise<void> {
+    if (staticMode) {
+        const user = staticUsers.get(userId);
+        if (!user) throw Error("User not found");
+        user.role = role;
+        logger.info(`Set static user ${userId} role to ${role}`);
+        return;
+    }
+
+    const result = await collections.users.findOneAndUpdate(
+        { _id: userId },
+        { $set: { role } } as UpdateFilter<APIv4.ServerUser>,
+    );
+    if (!result.ok || result.value === null)
+        throw Error("User not found");
+    logger.info(`Set user ${userId} role to ${role}`);
+}
+
+export async function getUserByEppn(
+    eppn: string,
+): Promise<APIv4.ServerUser | null> {
+    if (staticMode) {
+        for (const user of staticUsers.values()) {
+            if (user.eppn === eppn) return user;
+        }
+        return null;
+    }
+
+    return collections.users.findOne({ eppn });
 }

@@ -1,10 +1,10 @@
 import * as process from "process";
 
-let DB_URL: string;
+export const DB_URL: string | undefined = process.env.DB_URL;
 
-let url = process.env.DB_URL;
-if (url === undefined)
-    throw Error("Cannot load DB_URL from environment variables");
-DB_URL = url;
-
-export { DB_URL };
+/** Use this in standalone scripts that always require a database connection */
+export function requireDbUrl(): string {
+    if (!DB_URL)
+        throw Error("DB_URL environment variable is required but not set");
+    return DB_URL;
+}

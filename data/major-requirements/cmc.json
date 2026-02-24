@@ -1,0 +1,50 @@
+{
+    "school": "Claremont McKenna College",
+    "school_code": "cmc",
+    "catalog_year": "2025-2026",
+    "last_updated": "2026-02-01",
+    "general_requirements": [
+        {
+            "name": "General Education Requirements",
+            "description": "Courses across humanities, science, social sciences, and literature",
+            "courses": [],
+            "coursesRequired": 8
+        },
+        {
+            "name": "First-Year Humanities Seminar (FHS)",
+            "description": "Required seminar in the first year",
+            "courses": [],
+            "coursesRequired": 1
+        },
+        {
+            "name": "Physical Education",
+            "description": "Three PE courses",
+            "courses": [],
+            "coursesRequired": 3
+        },
+        {
+            "name": "Senior Thesis",
+            "description": "Required capstone thesis in the major",
+            "courses": [],
+            "coursesRequired": 1
+        }
+    ],
+    "majors": {
+        "economics": {
+            "name": "Economics",
+            "department": "Economics"
+        },
+        "government": {
+            "name": "Government",
+            "department": "Government"
+        },
+        "computer_science": {
+            "name": "Computer Science",
+            "department": "Computer Science"
+        },
+        "philosophy_politics_economics": {
+            "name": "Philosophy, Politics, and Economics",
+            "departments": ["Philosophy", "Government", "Economics"]
+        }
+    }
+}
