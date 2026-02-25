@@ -96,6 +96,16 @@ export async function updateUser(
     userId: APIv4.UserId,
     updateFields: Partial<APIv4.ServerUser>,
 ): Promise<void> {
+    if (staticMode) {
+        const user = staticUsers.get(userId);
+        if (!user) throw new Error(`User with ID ${userId} not found`);
+        Object.assign(user, updateFields);
+        logger.info(
+            `Updated static user ${userId} with fields: ${JSON.stringify(updateFields)}`,
+        );
+        return;
+    }
+
     const lookup = await collections.users.findOne({ _id: userId });
 
     if (lookup === null) {
@@ -122,6 +132,23 @@ export async function addSchedule(
     term: APIv4.TermIdentifier,
     scheduleName: string,
 ): Promise<APIv4.ScheduleId> {
+    if (staticMode) {
+        const user = staticUsers.get(userId);
+        if (!user) throw Error("User not found");
+        if (Object.keys(user.schedules).length >= 100)
+            throw Error("Schedule limit reached");
+        const scheduleId = uuid4("s");
+        user.schedules[scheduleId] = {
+            term,
+            name: scheduleName,
+            sections: [],
+        };
+        logger.info(
+            `Added static schedule ${scheduleName} (${APIv4.stringifyTermIdentifier(term)}) for user ${userId}. ID: ${scheduleId}`,
+        );
+        return scheduleId;
+    }
+
     const user = await getUser(userId);
     logger.info(
         `Adding schedule ${scheduleName} (${APIv4.stringifyTermIdentifier(
@@ -182,6 +209,17 @@ export async function renameSchedule(
     scheduleId: APIv4.ScheduleId,
     newName: string,
 ): Promise<void> {
+    if (staticMode) {
+        const user = staticUsers.get(userId);
+        if (!user || !user.schedules[scheduleId])
+            throw Error("User with this schedule not found");
+        user.schedules[scheduleId]!.name = newName;
+        logger.info(
+            `Renamed static schedule ${scheduleId} for user ${userId} to "${newName}"`,
+        );
+        return;
+    }
+
     logger.info(
         `Renaming schedule ${scheduleId} for user ${userId} to "${newName}"`,
     );
@@ -206,6 +244,30 @@ export async function addSection(
     scheduleId: APIv4.ScheduleId,
     section: APIv4.SectionIdentifier,
 ): Promise<void> {
+    if (staticMode) {
+        const user = staticUsers.get(userId);
+        if (!user || !user.schedules[scheduleId])
+            throw Error("User with this schedule not found");
+        const schedule = user.schedules[scheduleId]!;
+        if (
+            schedule.term.term !== section.term ||
+            schedule.term.year !== section.year
+        )
+            throw Error(
+                "Section to be added does not have the same term as the schedule",
+            );
+        const key = APIv4.stringifySectionCodeLong(section);
+        const exists = schedule.sections.some(
+            (s) => APIv4.stringifySectionCodeLong(s.section) === key,
+        );
+        if (!exists)
+            schedule.sections.push({
+                attrs: { selected: true },
+                section,
+            });
+        return;
+    }
+
     const user = await collections.users.findOne(
         filterUserWithSchedule(userId, scheduleId),
     );
@@ -260,6 +322,17 @@ export async function deleteSchedule(
     userId: APIv4.UserId,
     scheduleId: APIv4.ScheduleId,
 ): Promise<void> {
+    if (staticMode) {
+        const user = staticUsers.get(userId);
+        if (!user || !user.schedules[scheduleId])
+            throw Error("User with this schedule not found");
+        delete user.schedules[scheduleId];
+        logger.info(
+            `Deleted static schedule ${scheduleId} for user ${userId}`,
+        );
+        return;
+    }
+
     const user = await collections.users.findOne(
         filterUserWithSchedule(userId, scheduleId),
     );
@@ -296,6 +369,15 @@ export async function replaceSections(
     scheduleId: APIv4.ScheduleId,
     sections: APIv4.UserSection[],
 ): Promise<void> {
+    if (staticMode) {
+        const user = staticUsers.get(userId);
+        if (!user || !user.schedules[scheduleId])
+            throw Error("User with this schedule not found");
+        user.schedules[scheduleId]!.sections = sections;
+        logger.info(`Replaced static sections for ${userId}`);
+        return;
+    }
+
     logger.info(`Replacing sections for ${userId}`);
     const user = await collections.users.findOne(
         filterUserWithSchedule(userId, scheduleId),
@@ -324,6 +406,23 @@ export async function duplicateSchedule(
     fromScheduleId: APIv4.ScheduleId,
     scheduleName: string,
 ): Promise<APIv4.ScheduleId> {
+    if (staticMode) {
+        const user = staticUsers.get(userId);
+        if (!user || !user.schedules[fromScheduleId])
+            throw Error("User with this schedule not found");
+        const schedule = user.schedules[fromScheduleId]!;
+        const scheduleId = uuid4("s");
+        user.schedules[scheduleId] = {
+            name: scheduleName,
+            term: schedule.term,
+            sections: [...schedule.sections],
+        };
+        logger.info(
+            `Duplicated static schedule ${fromScheduleId} to ${scheduleId} for user ${userId}`,
+        );
+        return scheduleId;
+    }
+
     const user = await collections.users.findOne(
         filterUserWithSchedule(userId, fromScheduleId),
     );
@@ -347,6 +446,17 @@ export async function batchAddSectionsToNewSchedule(
     term: APIv4.TermIdentifier,
     scheduleName: string,
 ): Promise<APIv4.ScheduleId> {
+    if (staticMode) {
+        const user = staticUsers.get(userId);
+        if (!user) throw Error("User not found");
+        const scheduleId = uuid4("s");
+        user.schedules[scheduleId] = { name: scheduleName, term, sections };
+        logger.info(
+            `Batch-imported static sections for user ${userId}. Schedule ID: ${scheduleId}`,
+        );
+        return scheduleId;
+    }
+
     logger.info(`Batch-importing sections for user ${userId}, %o`, sections);
     const scheduleId = uuid4("s");
     const result = await collections.users.findOneAndUpdate(
@@ -378,6 +488,21 @@ export async function deleteSection(
     scheduleId: APIv4.ScheduleId,
     section: APIv4.SectionIdentifier,
 ): Promise<void> {
+    if (staticMode) {
+        const user = staticUsers.get(userId);
+        if (!user || !user.schedules[scheduleId])
+            throw Error("User with this schedule not found");
+        const schedule = user.schedules[scheduleId]!;
+        const key = APIv4.stringifySectionCodeLong(section);
+        schedule.sections = schedule.sections.filter(
+            (s) => APIv4.stringifySectionCodeLong(s.section) !== key,
+        );
+        logger.info(
+            `Deleted static section ${key} from ${scheduleId} for user ${userId}`,
+        );
+        return;
+    }
+
     const user = await collections.users.findOne(
         filterUserWithSchedule(userId, scheduleId),
     );
@@ -419,6 +544,19 @@ export async function setSectionAttrs(
     sectionId: APIv4.SectionIdentifier,
     attrs: Partial<APIv4.UserSectionAttrs>,
 ): Promise<void> {
+    if (staticMode) {
+        const user = staticUsers.get(userId);
+        if (!user || !user.schedules[scheduleId])
+            throw Error("User with this schedule not found");
+        const schedule = user.schedules[scheduleId]!;
+        const key = APIv4.stringifySectionCodeLong(sectionId);
+        const entry = schedule.sections.find(
+            (s) => APIv4.stringifySectionCodeLong(s.section) === key,
+        );
+        if (entry) entry.attrs = { ...entry.attrs, ...attrs };
+        return;
+    }
+
     const user = await collections.users.findOne(
         filterUserWithSchedule(userId, scheduleId),
     );

@@ -8,6 +8,7 @@ import {
     getSnapshot,
     addApproval,
 } from "../../db/models/shared-snapshot";
+import { updateShareApproval } from "../../db/models/graduation-block";
 import { createLogger } from "../../logger";
 
 const logger = createLogger("routes.advisor");
@@ -114,6 +115,19 @@ advisorApp.post(
         };
 
         await addApproval(snapshotId, approval);
+
+        // Update the student's BlockShareInfo with approval status
+        await updateShareApproval(
+            snapshot.studentUserId,
+            snapshot.blockId,
+            snapshot.advisorEmail,
+            {
+                approvalStatus: input.data.status,
+                approvalComment: input.data.comment,
+                approvalAdvisorName: input.data.advisorName,
+                approvalTimestamp: approval.timestamp,
+            },
+        );
 
         return response.status(201).end();
     },

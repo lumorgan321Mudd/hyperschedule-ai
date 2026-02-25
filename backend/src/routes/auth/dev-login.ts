@@ -12,6 +12,30 @@ const logger = createLogger("routes.auth.dev-login");
 
 export const devLoginApp = new App({ settings: { xPoweredBy: false } });
 
+// GET handler serves a simple login page
+devLoginApp.get("/dev-login", (request, response) => {
+    if (process.env.NODE_ENV === "production") {
+        return response.status(404).send("Not found");
+    }
+    response.header("Content-Type", "text/html").send(`<!DOCTYPE html>
+<html><head><title>Dev Login</title></head><body style="font-family:sans-serif;max-width:400px;margin:40px auto">
+<h2>Hyperschedule Dev Login</h2>
+<form id="f"><label>Email:<br><input name="eppn" value="student@hmc.edu" style="width:100%"></label><br><br>
+<label>College:<br><select name="org" style="width:100%">
+<option>Harvey Mudd College</option><option>Pomona College</option>
+<option>Claremont McKenna College</option><option>Scripps College</option>
+<option>Pitzer College</option></select></label><br><br>
+<label>Role (optional):<br><select name="role" style="width:100%">
+<option value="">—</option><option value="student">Student</option>
+<option value="advisor">Advisor</option></select></label><br><br>
+<button type="submit" style="padding:8px 24px">Log In</button></form>
+<script>document.getElementById('f').onsubmit=async e=>{e.preventDefault();
+const d=new FormData(e.target),p=new URLSearchParams();
+d.forEach((v,k)=>{if(v)p.set(k,v)});
+await fetch('/auth/dev-login?'+p,{method:'POST',credentials:'include'});
+window.location='http://localhost:5003/'}</script></body></html>`);
+});
+
 devLoginApp.post("/dev-login", async (request, response) => {
     if (process.env.NODE_ENV === "production") {
         return response.status(404).send("Not found");

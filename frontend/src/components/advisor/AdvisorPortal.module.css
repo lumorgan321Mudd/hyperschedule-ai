@@ -237,6 +237,124 @@
     font-size: 0.75rem;
 }
 
+/* Graduation requirements progress */
+
+.reqLoading {
+    color: var(--fg-2);
+    text-align: center;
+    padding: 1rem;
+    font-size: 0.85rem;
+}
+
+.requirementsSection {
+    background-color: var(--bg-1);
+    padding: 1rem;
+    border-radius: 0.25rem;
+
+    & > h3 {
+        margin: 0 0 0.5rem 0;
+    }
+}
+
+.reqCatalogInfo {
+    font-size: 0.8rem;
+    color: var(--fg-2);
+    margin: 0 0 1rem 0;
+}
+
+.reqCategory {
+    margin-bottom: 1rem;
+}
+
+.reqCategoryTitle {
+    margin: 0 0 0.5rem 0;
+    border-bottom: 1px solid var(--bg-2);
+    padding-bottom: 0.25rem;
+}
+
+.reqGroup {
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background-color: var(--bg-0);
+    border-radius: 0.25rem;
+}
+
+.reqGroupTitle {
+    margin: 0 0 0.375rem 0;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.reqProgressBadge {
+    font-size: 0.7rem;
+    padding: 0.125rem 0.5rem;
+    background-color: var(--hbg);
+    color: var(--hfg);
+    border-radius: 1rem;
+    font-weight: normal;
+}
+
+.reqDescription {
+    font-size: 0.8rem;
+    color: var(--fg-1);
+    margin: 0 0 0.375rem 0;
+}
+
+.reqCreditsNote {
+    font-size: 0.75rem;
+    color: var(--fg-2);
+    margin: 0 0 0.375rem 0;
+}
+
+.reqCourseList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1875rem;
+}
+
+.reqCourseItem {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background-color: var(--bg-1);
+    border-radius: 0.125rem;
+    font-size: 0.8rem;
+    border-left: 3px solid transparent;
+
+    &.reqCompleted {
+        background-color: var(--select);
+        border-left-color: var(--palette-green, #22c55e);
+    }
+}
+
+.reqCompletedCheck {
+    color: var(--palette-green, #22c55e);
+    font-weight: bold;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.reqCourseCode {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    min-width: 10ch;
+}
+
+.reqCourseTitle {
+    flex: 1;
+    color: var(--fg-1);
+}
+
+.reqCourseCredits {
+    color: var(--fg-2);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
 .approvalForm {
     background-color: var(--bg-1);
     padding: 1rem;

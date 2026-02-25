@@ -4,6 +4,7 @@ import { App } from "@tinyhttp/app";
 import { CURRENT_TERM } from "hyperschedule-shared/api/current-term";
 import { loadStatic } from "../../hmc-api/fetcher/utils";
 import { endpoints } from "../../hmc-api/fetcher/endpoints";
+import { staticMode, staticSections } from "../../db/static-store";
 
 const courseApp = new App({ settings: { xPoweredBy: false } });
 
@@ -62,6 +63,23 @@ courseApp.get("/course-areas", async function (request, reply) {
             )
             .send(file);
     } catch {
+        if (staticMode) {
+            // Build course area array from static sections
+            // Frontend expects [{area, description}] format
+            const seen = new Set<string>();
+            const areaList: { area: string; description: string }[] = [];
+            for (const s of staticSections) {
+                for (const area of s.courseAreas) {
+                    if (!seen.has(area)) {
+                        seen.add(area);
+                        areaList.push({ area, description: area });
+                    }
+                }
+            }
+            return reply
+                .header("Content-Type", "application/json")
+                .send(JSON.stringify(areaList));
+        }
         return reply.status(404).end();
     }
 });

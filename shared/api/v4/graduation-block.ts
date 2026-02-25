@@ -37,6 +37,10 @@ export const BlockShareInfo = z.object({
     advisorEmail: z.string(),
     lastSharedAt: z.string(),
     snapshotId: SharedBlockSnapshotId,
+    approvalStatus: z.enum(["approved", "rejected"]).optional(),
+    approvalComment: z.string().optional(),
+    approvalAdvisorName: z.string().optional(),
+    approvalTimestamp: z.string().optional(),
 });
 export type BlockShareInfo = z.infer<typeof BlockShareInfo>;
 

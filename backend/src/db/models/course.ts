@@ -7,6 +7,7 @@ import { createLogger } from "../../logger";
 import { CURRENT_TERM } from "hyperschedule-shared/api/current-term";
 import { z } from "zod";
 import type { BulkWriteResult } from "mongodb";
+import { staticMode, staticSections } from "../static-store";
 
 const logger = createLogger("db.course");
 
@@ -62,12 +63,20 @@ export async function updateSections(
 export async function getAllSections(
     term?: APIv4.TermIdentifier,
 ): Promise<APIv4.Section[]> {
-    term = term ?? CURRENT_TERM;
+    const t = term ?? CURRENT_TERM;
+
+    if (staticMode) {
+        return staticSections.filter(
+            (s) =>
+                s.identifier.term === t.term &&
+                s.identifier.year === t.year,
+        );
+    }
 
     logger.trace("DB query start for all sections");
     const cursor = collections.sections.find({
-        "_id.term": term.term,
-        "_id.year": term.year,
+        "_id.term": t.term,
+        "_id.year": t.year,
     });
     const arr = await cursor.toArray();
     logger.trace("DB query completed for all sections");
@@ -181,6 +190,22 @@ export async function computeOfferingHistory(
 
 // figure out which terms we have data for
 export async function computeAllTerms(): Promise<APIv4.TermIdentifier[]> {
+    if (staticMode) {
+        const termSet = new Set<string>();
+        const terms: APIv4.TermIdentifier[] = [];
+        for (const s of staticSections) {
+            const key = `${s.identifier.term}${s.identifier.year}`;
+            if (!termSet.has(key)) {
+                termSet.add(key);
+                terms.push({
+                    term: s.identifier.term,
+                    year: s.identifier.year,
+                });
+            }
+        }
+        return terms;
+    }
+
     logger.info("DB query start for all terms");
     const result = await collections.sections
         .aggregate([

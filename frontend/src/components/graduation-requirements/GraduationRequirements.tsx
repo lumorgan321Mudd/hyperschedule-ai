@@ -54,6 +54,18 @@ interface SchoolData {
     majors: Record<string, MajorInfo>;
 }
 
+// Extract base course key (dept + number) for requirement matching.
+// Ignores suffix (A/B/E/L) and affiliation (HM/PO/etc) since different
+// sections/variants of the same course fulfill the same requirement.
+// "CSCI 005 HM" → "CSCI5", "CHEM023A HM" → "CHEM23", "WRIT 001E HM" → "WRIT1"
+function courseBaseKey(code: string): string {
+    // Remove all spaces, then extract dept letters + course number (strip suffix & affiliation)
+    const compact = code.replace(/\s+/g, "");
+    const match = compact.match(/^([A-Z]+)0*(\d+)/);
+    if (!match) return compact;
+    return match[1]! + match[2]!;
+}
+
 function schoolCodeFromEnum(school: APIv4.School): string {
     switch (school) {
         case APIv4.School.HMC:
@@ -136,7 +148,7 @@ export default memo(function GraduationRequirements() {
         for (const sem of Object.values(block.semesters)) {
             for (const s of sem.sections) {
                 const code = APIv4.stringifyCourseCode(s.section);
-                blockCourses.add(code);
+                blockCourses.add(courseBaseKey(code));
             }
         }
     }
@@ -246,7 +258,7 @@ export default memo(function GraduationRequirements() {
                                                     key={i}
                                                     course={course}
                                                     completed={blockCourses.has(
-                                                        course.course,
+                                                        courseBaseKey(course.course),
                                                     )}
                                                 />
                                             ),
@@ -306,7 +318,7 @@ const RequirementGroupView = memo(function RequirementGroupView({
     completedCourses: Set<string>;
 }) {
     const completed = group.courses.filter((c) =>
-        completedCourses.has(c.course),
+        completedCourses.has(courseBaseKey(c.course)),
     ).length;
     const total =
         group.coursesRequired ?? group.courses.length;
@@ -335,7 +347,7 @@ const RequirementGroupView = memo(function RequirementGroupView({
                         <CourseItem
                             key={i}
                             course={course}
-                            completed={completedCourses.has(course.course)}
+                            completed={completedCourses.has(courseBaseKey(course.course))}
                         />
                     ))}
                 </div>
@@ -357,6 +369,7 @@ const CourseItem = memo(function CourseItem({
                 [Css.completed]: completed,
             })}
         >
+            {completed && <span className={Css.completedCheck}>&#10003;</span>}
             <span className={Css.courseCode}>{course.course}</span>
             {course.title && (
                 <span className={Css.courseTitle}>{course.title}</span>

@@ -110,10 +110,19 @@
     background-color: var(--bg-0);
     border-radius: 0.125rem;
     font-size: 0.85rem;
+    border-left: 3px solid transparent;
 
     &.completed {
         background-color: var(--select);
+        border-left-color: var(--palette-green, #22c55e);
     }
+}
+
+.completedCheck {
+    color: var(--palette-green, #22c55e);
+    font-weight: bold;
+    font-size: 0.9rem;
+    flex-shrink: 0;
 }
 
 .courseCode {

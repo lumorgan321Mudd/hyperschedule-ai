@@ -323,3 +323,57 @@ export async function setShareInfo(
         `Set share info for block ${blockId} -> ${shareInfo.advisorEmail}`,
     );
 }
+
+export async function updateShareApproval(
+    studentUserId: string,
+    blockId: APIv4.GraduationBlockId,
+    advisorEmail: string,
+    approval: {
+        approvalStatus: "approved" | "rejected";
+        approvalComment: string;
+        approvalAdvisorName: string;
+        approvalTimestamp: string;
+    },
+): Promise<void> {
+    if (staticMode) {
+        const user = getStaticUser(studentUserId);
+        const blocks = ensureBlocks(user);
+        const block = blocks[blockId];
+        if (!block || !block.shares) return;
+        const share = block.shares.find(
+            (s) => s.advisorEmail === advisorEmail,
+        );
+        if (share) {
+            share.approvalStatus = approval.approvalStatus;
+            share.approvalComment = approval.approvalComment;
+            share.approvalAdvisorName = approval.approvalAdvisorName;
+            share.approvalTimestamp = approval.approvalTimestamp;
+        }
+    } else {
+        // Find the share entry in the array and update its approval fields
+        const user = await collections.users.findOne({ _id: studentUserId });
+        if (!user?.graduationBlocks?.[blockId]?.shares) return;
+        const shareIdx = user.graduationBlocks[blockId]!.shares!.findIndex(
+            (s) => s.advisorEmail === advisorEmail,
+        );
+        if (shareIdx < 0) return;
+        await collections.users.updateOne(
+            { _id: studentUserId },
+            {
+                $set: {
+                    [`graduationBlocks.${blockId}.shares.${shareIdx}.approvalStatus`]:
+                        approval.approvalStatus,
+                    [`graduationBlocks.${blockId}.shares.${shareIdx}.approvalComment`]:
+                        approval.approvalComment,
+                    [`graduationBlocks.${blockId}.shares.${shareIdx}.approvalAdvisorName`]:
+                        approval.approvalAdvisorName,
+                    [`graduationBlocks.${blockId}.shares.${shareIdx}.approvalTimestamp`]:
+                        approval.approvalTimestamp,
+                },
+            } as any,
+        );
+    }
+    logger.info(
+        `Updated share approval for block ${blockId} (${advisorEmail}): ${approval.approvalStatus}`,
+    );
+}

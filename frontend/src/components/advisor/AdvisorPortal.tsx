@@ -1,11 +1,79 @@
 import { memo, useEffect, useState, useCallback } from "react";
 import Css from "./AdvisorPortal.module.css";
 import AppCss from "@components/App.module.css";
-import { apiFetch, apiApproveSnapshot } from "@lib/api";
+import { apiFetch, apiApproveSnapshot, fetchWithToast } from "@lib/api";
 import * as APIv4 from "hyperschedule-shared/api/v4";
 import { stringifyCourseCode } from "hyperschedule-shared/api/v4";
 import classNames from "classnames";
 import { toast } from "react-toastify";
+
+// --- Shared requirement types (same as GraduationRequirements) ---
+
+interface RequirementCourse {
+    course: string;
+    title?: string;
+    credits: number;
+    alternatives?: string[];
+}
+
+interface RequirementGroup {
+    name: string;
+    description?: string;
+    courses: RequirementCourse[];
+    creditsRequired?: number;
+    coursesRequired?: number;
+}
+
+interface MajorInfo {
+    name: string;
+    department?: string;
+    departments?: string[];
+    major_courses?: {
+        required?: RequirementCourse[];
+        electives?: {
+            description: string;
+            coursesRequired?: number;
+            level?: string;
+        };
+        clinic?: {
+            description: string;
+            courses: RequirementCourse[];
+        };
+    };
+}
+
+interface SchoolData {
+    school: string;
+    school_code: string;
+    catalog_year: string;
+    last_updated?: string;
+    general_requirements?: RequirementGroup[];
+    majors: Record<string, MajorInfo>;
+}
+
+function courseBaseKey(code: string): string {
+    const compact = code.replace(/\s+/g, "");
+    const match = compact.match(/^([A-Z]+)0*(\d+)/);
+    if (!match) return compact;
+    return match[1]! + match[2]!;
+}
+
+function schoolCodeFromEnum(school: APIv4.School): string {
+    switch (school) {
+        case APIv4.School.HMC:
+            return "hmc";
+        case APIv4.School.POM:
+            return "pomona";
+        case APIv4.School.SCR:
+            return "scripps";
+        case APIv4.School.CMC:
+            return "cmc";
+        case APIv4.School.PTZ:
+            return "pitzer";
+        default:
+            return "hmc";
+    }
+}
 
 export default memo(function AdvisorPortal() {
     const [snapshots, setSnapshots] = useState<APIv4.SharedBlockSnapshot[]>([]);
@@ -122,8 +190,43 @@ const SnapshotDetail = memo(function SnapshotDetail({
     const [signature, setSignature] = useState("");
     const [advisorName, setAdvisorName] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    const [schoolData, setSchoolData] = useState<SchoolData | null>(null);
+    const [reqLoading, setReqLoading] = useState(false);
 
     const semesterEntries = Object.entries(snapshot.semesters);
+
+    // Fetch graduation requirements for this snapshot's college
+    useEffect(() => {
+        const code = schoolCodeFromEnum(snapshot.college);
+        setReqLoading(true);
+        fetchWithToast(
+            `${__API_URL__}/v4/major-requirements/${code}`,
+            { credentials: "include" },
+        )
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data: SchoolData | null) => setSchoolData(data))
+            .catch(() => setSchoolData(null))
+            .finally(() => setReqLoading(false));
+    }, [snapshot.college]);
+
+    // Build completed courses set from the snapshot's semesters
+    const completedCourses = new Set<string>();
+    for (const sem of Object.values(snapshot.semesters)) {
+        for (const s of sem.sections) {
+            completedCourses.add(courseBaseKey(stringifyCourseCode(s.section)));
+        }
+    }
+
+    // Try to match major from snapshot to requirements data
+    const majorKey = schoolData
+        ? Object.keys(schoolData.majors).find(
+              (k) =>
+                  k.toLowerCase() === snapshot.major?.toLowerCase() ||
+                  schoolData.majors[k]?.name.toLowerCase() ===
+                      snapshot.major?.toLowerCase(),
+          )
+        : undefined;
+    const majorData = majorKey ? schoolData?.majors[majorKey] : undefined;
 
     const handleApproval = useCallback(
         async (status: "approved" | "rejected") => {
@@ -236,6 +339,110 @@ const SnapshotDetail = memo(function SnapshotDetail({
                 ))}
             </div>
 
+            {/* Graduation requirements progress */}
+            {reqLoading && (
+                <p className={Css.reqLoading}>Loading requirements...</p>
+            )}
+            {!reqLoading && schoolData && (
+                <div className={Css.requirementsSection}>
+                    <h3>Graduation Requirements Progress</h3>
+                    <p className={Css.reqCatalogInfo}>
+                        {schoolData.school} &mdash; Catalog Year:{" "}
+                        {schoolData.catalog_year}
+                    </p>
+
+                    {schoolData.general_requirements &&
+                        schoolData.general_requirements.length > 0 && (
+                            <div className={Css.reqCategory}>
+                                <h4 className={Css.reqCategoryTitle}>
+                                    General Requirements
+                                </h4>
+                                {schoolData.general_requirements.map(
+                                    (group, i) => (
+                                        <RequirementGroupView
+                                            key={i}
+                                            group={group}
+                                            completedCourses={completedCourses}
+                                        />
+                                    ),
+                                )}
+                            </div>
+                        )}
+
+                    {majorData && (
+                        <div className={Css.reqCategory}>
+                            <h4 className={Css.reqCategoryTitle}>
+                                {majorData.name} Major
+                            </h4>
+
+                            {majorData.major_courses?.required && (
+                                <div className={Css.reqGroup}>
+                                    <h5 className={Css.reqGroupTitle}>
+                                        Required Courses
+                                    </h5>
+                                    <div className={Css.reqCourseList}>
+                                        {majorData.major_courses.required.map(
+                                            (course, i) => (
+                                                <ReqCourseItem
+                                                    key={i}
+                                                    course={course}
+                                                    completed={completedCourses.has(
+                                                        courseBaseKey(
+                                                            course.course,
+                                                        ),
+                                                    )}
+                                                />
+                                            ),
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {majorData.major_courses?.electives && (
+                                <div className={Css.reqGroup}>
+                                    <h5 className={Css.reqGroupTitle}>
+                                        Electives
+                                    </h5>
+                                    <p className={Css.reqDescription}>
+                                        {
+                                            majorData.major_courses.electives
+                                                .description
+                                        }
+                                    </p>
+                                </div>
+                            )}
+
+                            {majorData.major_courses?.clinic && (
+                                <div className={Css.reqGroup}>
+                                    <h5 className={Css.reqGroupTitle}>
+                                        Clinic
+                                    </h5>
+                                    <p className={Css.reqDescription}>
+                                        {
+                                            majorData.major_courses.clinic
+                                                .description
+                                        }
+                                    </p>
+                                </div>
+                            )}
+
+                            {!majorData.major_courses && (
+                                <p className={Css.reqDescription}>
+                                    Detailed course requirements coming soon.
+                                </p>
+                            )}
+                        </div>
+                    )}
+
+                    {snapshot.major && !majorData && (
+                        <p className={Css.reqDescription}>
+                            Could not match major &ldquo;{snapshot.major}
+                            &rdquo; to available requirements data.
+                        </p>
+                    )}
+                </div>
+            )}
+
             {/* Approval form */}
             <div className={Css.approvalForm}>
                 <h3>Submit Review</h3>
@@ -289,6 +496,82 @@ const SnapshotDetail = memo(function SnapshotDetail({
                     </button>
                 </div>
             </div>
+        </div>
+    );
+});
+
+// --- Requirement display components (mirrors GraduationRequirements tab styling) ---
+
+const RequirementGroupView = memo(function RequirementGroupView({
+    group,
+    completedCourses,
+}: {
+    group: RequirementGroup;
+    completedCourses: Set<string>;
+}) {
+    const completed = group.courses.filter((c) =>
+        completedCourses.has(courseBaseKey(c.course)),
+    ).length;
+    const total = group.coursesRequired ?? group.courses.length;
+
+    return (
+        <div className={Css.reqGroup}>
+            <h5 className={Css.reqGroupTitle}>
+                {group.name}
+                {total > 0 && completedCourses.size > 0 && (
+                    <span className={Css.reqProgressBadge}>
+                        {completed}/{total}
+                    </span>
+                )}
+            </h5>
+            {group.description && (
+                <p className={Css.reqDescription}>{group.description}</p>
+            )}
+            {group.creditsRequired !== undefined && (
+                <p className={Css.reqCreditsNote}>
+                    Credits required: {group.creditsRequired}
+                </p>
+            )}
+            {group.courses.length > 0 && (
+                <div className={Css.reqCourseList}>
+                    {group.courses.map((course, i) => (
+                        <ReqCourseItem
+                            key={i}
+                            course={course}
+                            completed={completedCourses.has(
+                                courseBaseKey(course.course),
+                            )}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+});
+
+const ReqCourseItem = memo(function ReqCourseItem({
+    course,
+    completed,
+}: {
+    course: RequirementCourse;
+    completed: boolean;
+}) {
+    return (
+        <div
+            className={classNames(Css.reqCourseItem, {
+                [Css.reqCompleted]: completed,
+            })}
+        >
+            {completed && (
+                <span className={Css.reqCompletedCheck}>&#10003;</span>
+            )}
+            <span className={Css.reqCourseCode}>{course.course}</span>
+            {course.title && (
+                <span className={Css.reqCourseTitle}>{course.title}</span>
+            )}
+            <span className={Css.reqCourseCredits}>
+                {course.credits} credit{course.credits !== 1 ? "s" : ""}
+            </span>
         </div>
     );
 });

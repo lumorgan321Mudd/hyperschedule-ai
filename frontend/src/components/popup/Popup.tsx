@@ -18,10 +18,12 @@ import { memo } from "react";
 function PopupBox(props: {
     children: JSX.Element;
     inactive?: true;
+    noDismiss?: boolean;
 }): JSX.Element {
     const setPopup = useStore((store) => store.setPopup);
 
     function dismissPopup() {
+        if (props.noDismiss) return;
         setPopup(null);
     }
 
@@ -34,9 +36,11 @@ function PopupBox(props: {
         >
             {/*we call stopPropagation here so clicks inside the box don't actually dismiss the popup*/}
             <div className={Css.popupBox} onClick={(e) => e.stopPropagation()}>
-                <button className={Css.closeButton} onClick={dismissPopup}>
-                    <Feather.X size={24} />
-                </button>
+                {!props.noDismiss && (
+                    <button className={Css.closeButton} onClick={dismissPopup}>
+                        <Feather.X size={24} />
+                    </button>
+                )}
                 <div className={Css.popupContent}>{props.children}</div>
             </div>
         </div>
@@ -98,7 +102,7 @@ export default memo(function Popup() {
             );
         case PopupOption.RoleSelect:
             return (
-                <PopupBox>
+                <PopupBox noDismiss>
                     <RoleSelect />
                 </PopupBox>
             );

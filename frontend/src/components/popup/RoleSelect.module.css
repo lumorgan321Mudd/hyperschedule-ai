@@ -2,43 +2,107 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
-    padding: 1rem;
+    gap: 1.5rem;
+    padding: 0.5rem 1rem 1rem;
+}
+
+.header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    text-align: center;
+}
+
+.headerIcon {
+    color: var(--hbg-2);
+    margin-bottom: 0.25rem;
 }
 
 .title {
     margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--fg-0);
 }
 
-.description {
-    color: var(--fg-1);
-    text-align: center;
+.subtitle {
     margin: 0;
+    color: var(--fg-1);
+    font-size: 0.95rem;
+    max-width: 28em;
+    line-height: 1.4;
 }
 
 .options {
     display: flex;
-    gap: 1rem;
+    gap: 1.25rem;
     flex-wrap: wrap;
     justify-content: center;
+    width: 100%;
 }
 
-.roleButton {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    padding: 1.5rem 2rem !important;
+.roleCard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.75rem 1.5rem;
     min-width: 200px;
-    gap: 0.5rem !important;
+    max-width: 240px;
+    flex: 1;
+
+    background-color: var(--bg-1);
+    border: 2px solid var(--bg-2, var(--hbg-2));
+    border-radius: 0.75rem;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--fg-0);
+    transition:
+        border-color 200ms,
+        background-color 200ms,
+        transform 150ms,
+        box-shadow 200ms;
+
+    &:hover {
+        border-color: var(--hbg);
+        background-color: var(--bg-0);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    &:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    }
+}
+
+.iconCircle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 50%;
+    background-color: var(--hbg);
+    color: var(--hfg);
 }
 
 .roleTitle {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     font-weight: 600;
 }
 
 .roleDescription {
     font-size: 0.8rem;
-    opacity: 0.8;
+    color: var(--fg-1);
     text-align: center;
+    line-height: 1.45;
+}
+
+.footnote {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--fg-1);
+    opacity: 0.7;
 }
