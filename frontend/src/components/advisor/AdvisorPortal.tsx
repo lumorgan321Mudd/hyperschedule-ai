@@ -1,11 +1,13 @@
-import { memo, useEffect, useState, useCallback } from "react";
+import { memo, useEffect, useState, useCallback, useMemo } from "react";
 import Css from "./AdvisorPortal.module.css";
 import AppCss from "@components/App.module.css";
 import { apiFetch, apiApproveSnapshot, fetchWithToast } from "@lib/api";
 import * as APIv4 from "hyperschedule-shared/api/v4";
-import { stringifyCourseCode } from "hyperschedule-shared/api/v4";
+import { stringifyCourseCode, stringifySectionCodeLong } from "hyperschedule-shared/api/v4";
 import classNames from "classnames";
 import { toast } from "react-toastify";
+import { useSectionsForTermsQuery } from "@hooks/api/query";
+import { courseBaseKey, computeHsaSubCategories, HSA_CONFIG } from "@lib/hsa-requirements";
 
 // --- Shared requirement types (same as GraduationRequirements) ---
 
@@ -49,13 +51,6 @@ interface SchoolData {
     last_updated?: string;
     general_requirements?: RequirementGroup[];
     majors: Record<string, MajorInfo>;
-}
-
-function courseBaseKey(code: string): string {
-    const compact = code.replace(/\s+/g, "");
-    const match = compact.match(/^([A-Z]+)0*(\d+)/);
-    if (!match) return compact;
-    return match[1]! + match[2]!;
 }
 
 function schoolCodeFromEnum(school: APIv4.School): string {
@@ -130,6 +125,9 @@ export default memo(function AdvisorPortal() {
                         >
                             <span className={Css.snapshotName}>
                                 {snap.blockName}
+                                {snap.planType === "hsa" && (
+                                    <span className={Css.hsaBadge}>HSA</span>
+                                )}
                             </span>
                             <span className={Css.snapshotStudent}>
                                 {snap.studentEppn}
@@ -308,139 +306,146 @@ const SnapshotDetail = memo(function SnapshotDetail({
                 </div>
             )}
 
-            {/* Semester view */}
-            <div className={Css.semesterGrid}>
-                {semesterEntries.map(([semId, semester]) => (
-                    <div key={semId} className={Css.semesterColumn}>
-                        <h4 className={Css.semesterName}>{semester.name}</h4>
-                        {semester.isFutureTerm && (
-                            <div className={Css.futureBanner}>
-                                Future term
-                            </div>
-                        )}
-                        <div className={Css.sectionList}>
-                            {semester.sections.length === 0 && (
-                                <p className={Css.emptySections}>
-                                    No courses
-                                </p>
-                            )}
-                            {semester.sections.map((s, i) => (
-                                <div key={i} className={Css.sectionItem}>
-                                    <span className={Css.sectionCode}>
-                                        {stringifyCourseCode(s.section)}
-                                    </span>
-                                    <span className={Css.sectionSchool}>
-                                        {s.section.affiliation}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Graduation requirements progress */}
-            {reqLoading && (
-                <p className={Css.reqLoading}>Loading requirements...</p>
-            )}
-            {!reqLoading && schoolData && (
-                <div className={Css.requirementsSection}>
-                    <h3>Graduation Requirements Progress</h3>
-                    <p className={Css.reqCatalogInfo}>
-                        {schoolData.school} &mdash; Catalog Year:{" "}
-                        {schoolData.catalog_year}
-                    </p>
-
-                    {schoolData.general_requirements &&
-                        schoolData.general_requirements.length > 0 && (
-                            <div className={Css.reqCategory}>
-                                <h4 className={Css.reqCategoryTitle}>
-                                    General Requirements
-                                </h4>
-                                {schoolData.general_requirements.map(
-                                    (group, i) => (
-                                        <RequirementGroupView
-                                            key={i}
-                                            group={group}
-                                            completedCourses={completedCourses}
-                                        />
-                                    ),
+            {/* HSA Plan view */}
+            {snapshot.planType === "hsa" ? (
+                <HsaSnapshotView snapshot={snapshot} />
+            ) : (
+                <>
+                    {/* Semester view */}
+                    <div className={Css.semesterGrid}>
+                        {semesterEntries.map(([semId, semester]) => (
+                            <div key={semId} className={Css.semesterColumn}>
+                                <h4 className={Css.semesterName}>{semester.name}</h4>
+                                {semester.isFutureTerm && (
+                                    <div className={Css.futureBanner}>
+                                        Future term
+                                    </div>
                                 )}
+                                <div className={Css.sectionList}>
+                                    {semester.sections.length === 0 && (
+                                        <p className={Css.emptySections}>
+                                            No courses
+                                        </p>
+                                    )}
+                                    {semester.sections.map((s, i) => (
+                                        <div key={i} className={Css.sectionItem}>
+                                            <span className={Css.sectionCode}>
+                                                {stringifyCourseCode(s.section)}
+                                            </span>
+                                            <span className={Css.sectionSchool}>
+                                                {s.section.affiliation}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                        )}
+                        ))}
+                    </div>
 
-                    {majorData && (
-                        <div className={Css.reqCategory}>
-                            <h4 className={Css.reqCategoryTitle}>
-                                {majorData.name} Major
-                            </h4>
+                    {/* Graduation requirements progress */}
+                    {reqLoading && (
+                        <p className={Css.reqLoading}>Loading requirements...</p>
+                    )}
+                    {!reqLoading && schoolData && (
+                        <div className={Css.requirementsSection}>
+                            <h3>Graduation Requirements Progress</h3>
+                            <p className={Css.reqCatalogInfo}>
+                                {schoolData.school} &mdash; Catalog Year:{" "}
+                                {schoolData.catalog_year}
+                            </p>
 
-                            {majorData.major_courses?.required && (
-                                <div className={Css.reqGroup}>
-                                    <h5 className={Css.reqGroupTitle}>
-                                        Required Courses
-                                    </h5>
-                                    <div className={Css.reqCourseList}>
-                                        {majorData.major_courses.required.map(
-                                            (course, i) => (
-                                                <ReqCourseItem
+                            {schoolData.general_requirements &&
+                                schoolData.general_requirements.length > 0 && (
+                                    <div className={Css.reqCategory}>
+                                        <h4 className={Css.reqCategoryTitle}>
+                                            General Requirements
+                                        </h4>
+                                        {schoolData.general_requirements.map(
+                                            (group, i) => (
+                                                <RequirementGroupView
                                                     key={i}
-                                                    course={course}
-                                                    completed={completedCourses.has(
-                                                        courseBaseKey(
-                                                            course.course,
-                                                        ),
-                                                    )}
+                                                    group={group}
+                                                    completedCourses={completedCourses}
                                                 />
                                             ),
                                         )}
                                     </div>
+                                )}
+
+                            {majorData && (
+                                <div className={Css.reqCategory}>
+                                    <h4 className={Css.reqCategoryTitle}>
+                                        {majorData.name} Major
+                                    </h4>
+
+                                    {majorData.major_courses?.required && (
+                                        <div className={Css.reqGroup}>
+                                            <h5 className={Css.reqGroupTitle}>
+                                                Required Courses
+                                            </h5>
+                                            <div className={Css.reqCourseList}>
+                                                {majorData.major_courses.required.map(
+                                                    (course, i) => (
+                                                        <ReqCourseItem
+                                                            key={i}
+                                                            course={course}
+                                                            completed={completedCourses.has(
+                                                                courseBaseKey(
+                                                                    course.course,
+                                                                ),
+                                                            )}
+                                                        />
+                                                    ),
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {majorData.major_courses?.electives && (
+                                        <div className={Css.reqGroup}>
+                                            <h5 className={Css.reqGroupTitle}>
+                                                Electives
+                                            </h5>
+                                            <p className={Css.reqDescription}>
+                                                {
+                                                    majorData.major_courses.electives
+                                                        .description
+                                                }
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {majorData.major_courses?.clinic && (
+                                        <div className={Css.reqGroup}>
+                                            <h5 className={Css.reqGroupTitle}>
+                                                Clinic
+                                            </h5>
+                                            <p className={Css.reqDescription}>
+                                                {
+                                                    majorData.major_courses.clinic
+                                                        .description
+                                                }
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {!majorData.major_courses && (
+                                        <p className={Css.reqDescription}>
+                                            Detailed course requirements coming soon.
+                                        </p>
+                                    )}
                                 </div>
                             )}
 
-                            {majorData.major_courses?.electives && (
-                                <div className={Css.reqGroup}>
-                                    <h5 className={Css.reqGroupTitle}>
-                                        Electives
-                                    </h5>
-                                    <p className={Css.reqDescription}>
-                                        {
-                                            majorData.major_courses.electives
-                                                .description
-                                        }
-                                    </p>
-                                </div>
-                            )}
-
-                            {majorData.major_courses?.clinic && (
-                                <div className={Css.reqGroup}>
-                                    <h5 className={Css.reqGroupTitle}>
-                                        Clinic
-                                    </h5>
-                                    <p className={Css.reqDescription}>
-                                        {
-                                            majorData.major_courses.clinic
-                                                .description
-                                        }
-                                    </p>
-                                </div>
-                            )}
-
-                            {!majorData.major_courses && (
+                            {snapshot.major && !majorData && (
                                 <p className={Css.reqDescription}>
-                                    Detailed course requirements coming soon.
+                                    Could not match major &ldquo;{snapshot.major}
+                                    &rdquo; to available requirements data.
                                 </p>
                             )}
                         </div>
                     )}
-
-                    {snapshot.major && !majorData && (
-                        <p className={Css.reqDescription}>
-                            Could not match major &ldquo;{snapshot.major}
-                            &rdquo; to available requirements data.
-                        </p>
-                    )}
-                </div>
+                </>
             )}
 
             {/* Approval form */}
@@ -573,5 +578,200 @@ const ReqCourseItem = memo(function ReqCourseItem({
                 {course.credits} credit{course.credits !== 1 ? "s" : ""}
             </span>
         </div>
+    );
+});
+
+// --- HSA Snapshot View ---
+
+const HSA_GROUPS: { key: string | undefined; label: string }[] = [
+    { key: undefined, label: "Undecided" },
+    { key: "concentration", label: "Concentration" },
+    { key: "distribution", label: "Distribution" },
+];
+
+const HsaSnapshotView = memo(function HsaSnapshotView({
+    snapshot,
+}: {
+    snapshot: APIv4.SharedBlockSnapshot;
+}) {
+    const semesterEntries = Object.entries(snapshot.semesters);
+    const takenEntry = semesterEntries.find(([, s]) => s.name === "Taken");
+    const proposedEntry = semesterEntries.find(([, s]) => s.name === "Proposed");
+    const alternativesEntry = semesterEntries.find(([, s]) => s.name === "Alternatives");
+
+    // Collect terms for section lookup
+    const blockTerms = useMemo(() => {
+        const terms: APIv4.TermIdentifier[] = [];
+        const seen = new Set<string>();
+        for (const [, sem] of semesterEntries) {
+            const key = `${sem.term.year}${sem.term.term}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                terms.push(sem.term);
+            }
+        }
+        return terms;
+    }, [semesterEntries]);
+
+    const sectionsData = useSectionsForTermsQuery(
+        blockTerms.length > 0,
+        blockTerms,
+    );
+
+    const sectionsLookup = useMemo(() => {
+        const lookup = new Map<string, APIv4.Section>();
+        if (sectionsData.data) {
+            for (const section of sectionsData.data) {
+                const key = stringifySectionCodeLong(section.identifier);
+                lookup.set(key, section);
+            }
+        }
+        return lookup;
+    }, [sectionsData.data]);
+
+    // Build course maps
+    const { courseAreaCodes, courseHsaTags, courseDepartments, courseDisplayNames } =
+        useMemo(() => {
+            const areaCodes = new Map<string, string[]>();
+            const hsaTags = new Map<string, string>();
+            const depts = new Map<string, string>();
+            const displayNames = new Map<string, string>();
+
+            for (const [, sem] of semesterEntries) {
+                for (const s of sem.sections) {
+                    const code = stringifyCourseCode(s.section);
+                    const bk = courseBaseKey(code);
+                    displayNames.set(bk, code.trim());
+                    depts.set(bk, s.section.department);
+                    const tag = (s.attrs as { hsaTag?: string }).hsaTag;
+                    if (tag) hsaTags.set(bk, tag);
+
+                    const longKey = stringifySectionCodeLong(s.section);
+                    const fullSection = sectionsLookup.get(longKey);
+                    if (fullSection) {
+                        areaCodes.set(bk, fullSection.courseAreas);
+                    }
+                }
+            }
+
+            return {
+                courseAreaCodes: areaCodes,
+                courseHsaTags: hsaTags,
+                courseDepartments: depts,
+                courseDisplayNames: displayNames,
+            };
+        }, [semesterEntries, sectionsLookup]);
+
+    const subCategoryResults = useMemo(
+        () =>
+            computeHsaSubCategories(
+                HSA_CONFIG.subCategories,
+                HSA_CONFIG.areaCodeMatch,
+                HSA_CONFIG.excludeCourses,
+                courseAreaCodes,
+                courseHsaTags,
+                courseDepartments,
+            ),
+        [courseAreaCodes, courseHsaTags, courseDepartments],
+    );
+
+    const renderCategory = (
+        label: string,
+        entry: [string, APIv4.BlockSemester] | undefined,
+    ) => {
+        if (!entry) return null;
+        const [, semester] = entry;
+
+        return (
+            <div className={Css.hsaCategory}>
+                <h4 className={Css.hsaCategoryTitle}>{label}</h4>
+                <div className={Css.hsaGroupGrid}>
+                    {HSA_GROUPS.map(({ key, label: groupLabel }) => {
+                        const sections = semester.sections.filter((s) => {
+                            const tag = (s.attrs as { hsaTag?: string }).hsaTag;
+                            return key === undefined ? !tag : tag === key;
+                        });
+                        return (
+                            <div key={groupLabel} className={Css.hsaGroup}>
+                                <span className={Css.hsaGroupLabel}>
+                                    {groupLabel}
+                                </span>
+                                {sections.map((s, i) => (
+                                    <div key={i} className={Css.hsaCourseItem}>
+                                        <span className={Css.sectionCode}>
+                                            {stringifyCourseCode(s.section)}
+                                        </span>
+                                    </div>
+                                ))}
+                                {sections.length === 0 && (
+                                    <span className={Css.hsaEmptyGroup}>
+                                        No courses
+                                    </span>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <>
+            {renderCategory("Taken", takenEntry)}
+            {renderCategory("Proposed", proposedEntry)}
+            {renderCategory("Alternatives", alternativesEntry)}
+
+            {/* HSA Requirements Progress */}
+            <div className={Css.requirementsSection}>
+                <h3>HSA Requirements Progress</h3>
+                {subCategoryResults.map((sub, i) => (
+                    <div key={i} className={Css.reqGroup}>
+                        <h5 className={Css.reqGroupTitle}>
+                            {sub.name}
+                            <span className={Css.reqProgressBadge}>
+                                {sub.completed}/{sub.required}
+                            </span>
+                        </h5>
+                        <div className={Css.reqCourseList}>
+                            {sub.matched.map((bk) => (
+                                <div
+                                    key={bk}
+                                    className={classNames(
+                                        Css.reqCourseItem,
+                                        Css.reqCompleted,
+                                    )}
+                                >
+                                    <span className={Css.reqCompletedCheck}>
+                                        &#10003;
+                                    </span>
+                                    <span className={Css.reqCourseCode}>
+                                        {courseDisplayNames.get(bk) ?? bk}
+                                    </span>
+                                </div>
+                            ))}
+                            {Array.from(
+                                {
+                                    length: Math.max(
+                                        0,
+                                        sub.required - sub.completed,
+                                    ),
+                                },
+                                (_, j) => (
+                                    <div
+                                        key={`empty-${j}`}
+                                        className={Css.reqCourseItem}
+                                    >
+                                        <span className={Css.reqCourseCode}>
+                                            {sub.name} class
+                                        </span>
+                                    </div>
+                                ),
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </>
     );
 });

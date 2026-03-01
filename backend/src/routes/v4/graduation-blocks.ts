@@ -75,6 +75,7 @@ graduationBlocksApp.post(
             input.data.name,
             input.data.college,
             input.data.major,
+            input.data.planType,
         );
 
         return response
@@ -232,6 +233,7 @@ graduationBlocksApp.post(
             blockId: input.data.blockId,
             college: block.college,
             major: block.major,
+            planType: block.planType,
             semesters: block.semesters,
             sharedAt: new Date().toISOString(),
         });

@@ -5,6 +5,8 @@ import { CURRENT_TERM } from "hyperschedule-shared/api/current-term";
 import { loadStatic } from "../../hmc-api/fetcher/utils";
 import { endpoints } from "../../hmc-api/fetcher/endpoints";
 import { staticMode, staticSections } from "../../db/static-store";
+import { readFile } from "fs/promises";
+import { join } from "path";
 
 const courseApp = new App({ settings: { xPoweredBy: false } });
 
@@ -64,21 +66,45 @@ courseApp.get("/course-areas", async function (request, reply) {
             .send(file);
     } catch {
         if (staticMode) {
-            // Build course area array from static sections
-            // Frontend expects [{area, description}] format
-            const seen = new Set<string>();
-            const areaList: { area: string; description: string }[] = [];
-            for (const s of staticSections) {
-                for (const area of s.courseAreas) {
-                    if (!seen.has(area)) {
-                        seen.add(area);
-                        areaList.push({ area, description: area });
+            // Try loading static course area descriptions file
+            try {
+                const descFile = await readFile(
+                    join(process.cwd(), "..", "data", "course-area-descriptions.json"),
+                    "utf-8",
+                );
+                const descriptions: { area: string; description: string }[] = JSON.parse(descFile);
+                const descMap = new Map(descriptions.map((d) => [d.area, d.description]));
+
+                // Build list from sections, using descriptions where available
+                const seen = new Set<string>();
+                const areaList: { area: string; description: string }[] = [];
+                for (const s of staticSections) {
+                    for (const area of s.courseAreas) {
+                        if (!seen.has(area)) {
+                            seen.add(area);
+                            areaList.push({ area, description: descMap.get(area) ?? area });
+                        }
                     }
                 }
+                return reply
+                    .header("Content-Type", "application/json")
+                    .send(JSON.stringify(areaList));
+            } catch {
+                // Fall back to area codes as descriptions
+                const seen = new Set<string>();
+                const areaList: { area: string; description: string }[] = [];
+                for (const s of staticSections) {
+                    for (const area of s.courseAreas) {
+                        if (!seen.has(area)) {
+                            seen.add(area);
+                            areaList.push({ area, description: area });
+                        }
+                    }
+                }
+                return reply
+                    .header("Content-Type", "application/json")
+                    .send(JSON.stringify(areaList));
             }
-            return reply
-                .header("Content-Type", "application/json")
-                .send(JSON.stringify(areaList));
         }
         return reply.status(404).end();
     }

@@ -25,6 +25,7 @@ export async function createBlock(
     name: string,
     college: APIv4.School,
     major?: string,
+    planType?: APIv4.PlanType,
 ): Promise<APIv4.GraduationBlockId> {
     const blockId = uuid4("b") as APIv4.GraduationBlockId;
     const now = new Date().toISOString();
@@ -35,6 +36,7 @@ export async function createBlock(
         createdAt: now,
         updatedAt: now,
         ...(major ? { major } : {}),
+        ...(planType ? { planType } : {}),
     };
 
     if (staticMode) {

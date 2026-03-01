@@ -10,6 +10,7 @@ export const enum PopupOption {
     About = "about",
     RoleSelect = "role-select",
     CreateBlock = "create-block",
+    CreateHsaBlock = "create-hsa-block",
     ShareBlock = "share-block",
 }
 
@@ -33,8 +34,10 @@ export type Popup =
     | { option: PopupOption.About }
     | { option: PopupOption.RoleSelect }
     | { option: PopupOption.CreateBlock }
+    | { option: PopupOption.CreateHsaBlock }
     | {
           option: PopupOption.ShareBlock;
           blockId: APIv4.GraduationBlockId;
+          planType?: string;
       }
     | null;

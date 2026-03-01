@@ -154,6 +154,7 @@
     grid-area: content;
     min-height: 0;
     display: grid;
+    grid-template-rows: 1fr;
 
     &.hidden {
         visibility: hidden;

@@ -12,6 +12,7 @@ import ExportCalendar from "@components/popup/ExportCalendar";
 import About from "@components/popup/About";
 import RoleSelect from "@components/popup/RoleSelect";
 import CreateBlock from "@components/popup/CreateBlock";
+import CreateHsaBlock from "@components/popup/CreateHsaBlock";
 import ShareBlock from "@components/popup/ShareBlock";
 import { memo } from "react";
 
@@ -112,10 +113,16 @@ export default memo(function Popup() {
                     <CreateBlock />
                 </PopupBox>
             );
+        case PopupOption.CreateHsaBlock:
+            return (
+                <PopupBox>
+                    <CreateHsaBlock />
+                </PopupBox>
+            );
         case PopupOption.ShareBlock:
             return (
                 <PopupBox>
-                    <ShareBlock blockId={popup.blockId} />
+                    <ShareBlock blockId={popup.blockId} planType={popup.planType} />
                 </PopupBox>
             );
         default:

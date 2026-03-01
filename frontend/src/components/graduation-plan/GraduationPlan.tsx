@@ -9,12 +9,14 @@ import * as APIv4 from "hyperschedule-shared/api/v4";
 import {
     stringifyCourseCode,
     stringifySectionCode,
+    stringifySectionCodeLong,
 } from "hyperschedule-shared/api/v4";
 import classNames from "classnames";
 import { toast } from "react-toastify";
-import { useSectionsQuery, useAllTermsQuery } from "@hooks/api/query";
+import { useSectionsQuery, useAllTermsQuery, useSectionsForTermsQuery } from "@hooks/api/query";
 import { CURRENT_TERM } from "hyperschedule-shared/api/current-term";
 import * as Search from "@lib/search";
+import { courseBaseKey, computeHsaSubCategories, HSA_CONFIG } from "@lib/hsa-requirements";
 
 /**
  * For future terms without real data, find the best available fallback.
@@ -187,17 +189,31 @@ export default memo(function GraduationPlan() {
             <div className={Css.sidebar}>
                 <div className={Css.sidebarHeader}>
                     <h3>My Plans</h3>
-                    <button
-                        className={classNames(
-                            AppCss.defaultButton,
-                            Css.createButton,
-                        )}
-                        onClick={() =>
-                            setPopup({ option: PopupOption.CreateBlock })
-                        }
-                    >
-                        + New Plan
-                    </button>
+                    <div className={Css.sidebarButtons}>
+                        <button
+                            className={classNames(
+                                AppCss.defaultButton,
+                                Css.createButton,
+                            )}
+                            onClick={() =>
+                                setPopup({ option: PopupOption.CreateBlock })
+                            }
+                        >
+                            + Plan
+                        </button>
+                        <button
+                            className={classNames(
+                                AppCss.defaultButton,
+                                Css.createButton,
+                                Css.createHsaButton,
+                            )}
+                            onClick={() =>
+                                setPopup({ option: PopupOption.CreateHsaBlock })
+                            }
+                        >
+                            + HSA Plan
+                        </button>
+                    </div>
                 </div>
                 <div className={Css.blockList}>
                     {blockEntries.length === 0 && (
@@ -213,7 +229,12 @@ export default memo(function GraduationPlan() {
                             })}
                             onClick={() => setActiveBlockId(id)}
                         >
-                            <span className={Css.blockName}>{block.name}</span>
+                            <span className={Css.blockName}>
+                                {block.name}
+                                {block.planType === "hsa" && (
+                                    <span className={Css.hsaBadge}>HSA</span>
+                                )}
+                            </span>
                             <span className={Css.blockMeta}>
                                 {APIv4.schoolCodeToName(block.college)}
                                 {block.major && ` - ${block.major}`}
@@ -276,6 +297,7 @@ export default memo(function GraduationPlan() {
                                 option: PopupOption.ShareBlock,
                                 blockId:
                                     activeBlockId! as APIv4.GraduationBlockId,
+                                planType: activeBlock.planType,
                             })
                         }
                         onRefresh={getUser}
@@ -496,6 +518,7 @@ const BlockEditor = memo(function BlockEditor({
     onRefresh: () => Promise<void>;
 }) {
     const [showAddSemester, setShowAddSemester] = useState(false);
+    const isHsa = block.planType === "hsa";
 
     const semesterEntries = Object.entries(block.semesters).sort(
         ([, a], [, b]) => {
@@ -505,15 +528,20 @@ const BlockEditor = memo(function BlockEditor({
     );
     const existingTerms = semesterEntries.map(([, s]) => s.term);
 
+    const shareLabel = isHsa ? "Share with HSA Advisor" : "Share with Advisor";
+
     return (
         <div className={Css.blockEditor}>
             <div className={Css.editorHeader}>
                 <div>
-                    <h2 className={Css.blockTitle}>{block.name}</h2>
+                    <h2 className={Css.blockTitle}>
+                        {block.name}
+                        {isHsa && <span className={Css.hsaBadge}>HSA</span>}
+                    </h2>
                     <p className={Css.blockInfo}>
                         {APIv4.schoolCodeToName(block.college)}
                         {block.major && ` | ${block.major}`}
-                        {` | ${semesterEntries.length} semester${semesterEntries.length !== 1 ? "s" : ""}`}
+                        {!isHsa && ` | ${semesterEntries.length} semester${semesterEntries.length !== 1 ? "s" : ""}`}
                     </p>
                 </div>
                 <div className={Css.editorActions}>
@@ -529,17 +557,22 @@ const BlockEditor = memo(function BlockEditor({
                         </button>
                     )}
                     <button
-                        className={classNames(AppCss.defaultButton)}
+                        className={classNames(
+                            AppCss.defaultButton,
+                            isHsa ? Css.createHsaButton : undefined,
+                        )}
                         onClick={onShare}
                     >
-                        Share
+                        {shareLabel}
                     </button>
-                    <button
-                        className={classNames(AppCss.defaultButton)}
-                        onClick={() => setShowAddSemester(true)}
-                    >
-                        + Semester
-                    </button>
+                    {!isHsa && (
+                        <button
+                            className={classNames(AppCss.defaultButton)}
+                            onClick={() => setShowAddSemester(true)}
+                        >
+                            + Semester
+                        </button>
+                    )}
                     <button
                         className={classNames(
                             AppCss.defaultButton,
@@ -552,7 +585,7 @@ const BlockEditor = memo(function BlockEditor({
                 </div>
             </div>
 
-            {showAddSemester && (
+            {!isHsa && showAddSemester && (
                 <AddSemesterPicker
                     existingTerms={existingTerms}
                     onAdd={(term, importSections) => {
@@ -626,25 +659,34 @@ const BlockEditor = memo(function BlockEditor({
                     </div>
                 ))}
 
-            <div className={Css.semesterGrid}>
-                {semesterEntries.length === 0 && (
-                    <p className={Css.emptyMessage}>
-                        No semesters yet. Click "+ Semester" to start planning.
-                    </p>
-                )}
-                {semesterEntries.map(([semId, semester]) => (
-                    <SemesterColumn
-                        key={semId}
-                        blockId={blockId}
-                        semesterId={semId}
-                        semester={semester}
-                        onDelete={() => onDeleteSemester(blockId, semId)}
-                        onUpdateSections={(sections) =>
-                            onUpdateSections(blockId, semId, sections)
-                        }
-                    />
-                ))}
-            </div>
+            {isHsa ? (
+                <HsaPlanEditor
+                    blockId={blockId}
+                    block={block}
+                    semesterEntries={semesterEntries}
+                    onUpdateSections={onUpdateSections}
+                />
+            ) : (
+                <div className={Css.semesterGrid}>
+                    {semesterEntries.length === 0 && (
+                        <p className={Css.emptyMessage}>
+                            No semesters yet. Click "+ Semester" to start planning.
+                        </p>
+                    )}
+                    {semesterEntries.map(([semId, semester]) => (
+                        <SemesterColumn
+                            key={semId}
+                            blockId={blockId}
+                            semesterId={semId}
+                            semester={semester}
+                            onDelete={() => onDeleteSemester(blockId, semId)}
+                            onUpdateSections={(sections) =>
+                                onUpdateSections(blockId, semId, sections)
+                            }
+                        />
+                    ))}
+                </div>
+            )}
         </div>
     );
 });
@@ -1036,11 +1078,19 @@ const SemesterColumn = memo(function SemesterColumn({
                     const fullSection = sectionLookup.get(
                         stringifySectionCode(userSection.section),
                     );
+                    const isHsa = fullSection?.courseAreas.some(
+                        (a) => a === "4HSA" || a === "4HSS",
+                    );
+                    const courseCode = stringifyCourseCode(
+                        userSection.section,
+                    );
+                    const isHsaExcluded =
+                        courseCode.trim() === "HSA 010 HM";
                     return (
                         <div key={i} className={Css.sectionItem}>
                             <div className={Css.sectionInfo}>
                                 <span className={Css.sectionCode}>
-                                    {stringifyCourseCode(userSection.section)}
+                                    {courseCode}
                                 </span>
                                 {fullSection && (
                                     <span className={Css.sectionTitle}>
@@ -1048,6 +1098,45 @@ const SemesterColumn = memo(function SemesterColumn({
                                     </span>
                                 )}
                             </div>
+                            {isHsa && !isHsaExcluded && (
+                                <select
+                                    className={Css.hsaTagSelect}
+                                    value={
+                                        (
+                                            userSection.attrs as {
+                                                hsaTag?: string;
+                                            }
+                                        ).hsaTag ?? ""
+                                    }
+                                    onChange={(e) => {
+                                        const newTag =
+                                            e.target.value || undefined;
+                                        const updatedSections =
+                                            semester.sections.map((s, j) =>
+                                                j === i
+                                                    ? {
+                                                          ...s,
+                                                          attrs: {
+                                                              ...s.attrs,
+                                                              hsaTag: newTag,
+                                                          },
+                                                      }
+                                                    : s,
+                                            );
+                                        onUpdateSections(
+                                            updatedSections as APIv4.UserSection[],
+                                        );
+                                    }}
+                                >
+                                    <option value="">HSA</option>
+                                    <option value="concentration">
+                                        Conc.
+                                    </option>
+                                    <option value="distribution">
+                                        Distr.
+                                    </option>
+                                </select>
+                            )}
                             <button
                                 className={Css.removeCourseBtn}
                                 onClick={() => handleRemoveCourse(i)}
@@ -1076,6 +1165,388 @@ const SemesterColumn = memo(function SemesterColumn({
                 onAdd={handleAddCourse}
                 existingSections={semester.sections.map((s) => s.section)}
             />
+        </div>
+    );
+});
+
+// --- HSA Plan Editor ---
+
+type HsaTag = "concentration" | "distribution" | undefined;
+
+const HSA_GROUPS: { key: HsaTag; label: string }[] = [
+    { key: undefined, label: "Undecided" },
+    { key: "concentration", label: "Concentration" },
+    { key: "distribution", label: "Distribution" },
+];
+
+const HsaPlanEditor = memo(function HsaPlanEditor({
+    blockId,
+    block,
+    semesterEntries,
+    onUpdateSections,
+}: {
+    blockId: string;
+    block: APIv4.GraduationBlock;
+    semesterEntries: [string, APIv4.BlockSemester][];
+    onUpdateSections: (
+        blockId: string,
+        semId: string,
+        sections: APIv4.UserSection[],
+    ) => void;
+}) {
+    const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
+
+    // Group semesters into Taken, Proposed, and Alternatives
+    const takenEntry = semesterEntries.find(([, s]) => s.name === "Taken");
+    const proposedEntry = semesterEntries.find(([, s]) => s.name === "Proposed");
+    const alternativesEntry = semesterEntries.find(([, s]) => s.name === "Alternatives");
+
+    const handleDragStart = useCallback(
+        (e: React.DragEvent, semId: string, sectionIndex: number) => {
+            e.dataTransfer.setData(
+                "application/json",
+                JSON.stringify({ semId, sectionIndex }),
+            );
+            e.dataTransfer.effectAllowed = "move";
+        },
+        [],
+    );
+
+    const handleDragOver = useCallback(
+        (e: React.DragEvent, targetKey: string) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            setDragOverTarget(targetKey);
+        },
+        [],
+    );
+
+    const handleDragLeave = useCallback(() => {
+        setDragOverTarget(null);
+    }, []);
+
+    const handleDrop = useCallback(
+        (e: React.DragEvent, targetSemId: string, targetTag: HsaTag) => {
+            e.preventDefault();
+            setDragOverTarget(null);
+            try {
+                const data = JSON.parse(
+                    e.dataTransfer.getData("application/json"),
+                ) as { semId: string; sectionIndex: number };
+
+                const sourceSem = block.semesters[data.semId];
+                if (!sourceSem) return;
+                const section = sourceSem.sections[data.sectionIndex];
+                if (!section) return;
+
+                if (data.semId === targetSemId) {
+                    // Same semester — just update the hsaTag
+                    const updated = sourceSem.sections.map((s, i) =>
+                        i === data.sectionIndex
+                            ? {
+                                  ...s,
+                                  attrs: {
+                                      ...s.attrs,
+                                      hsaTag: targetTag,
+                                  },
+                              }
+                            : s,
+                    );
+                    onUpdateSections(
+                        blockId,
+                        targetSemId,
+                        updated as APIv4.UserSection[],
+                    );
+                } else {
+                    // Cross-semester: remove from source, add to target
+                    const sourceUpdated = sourceSem.sections.filter(
+                        (_, i) => i !== data.sectionIndex,
+                    );
+                    const targetSem = block.semesters[targetSemId];
+                    if (!targetSem) return;
+                    const newSection: APIv4.UserSection = {
+                        section: section.section,
+                        attrs: { ...section.attrs, hsaTag: targetTag },
+                    };
+                    const targetUpdated = [...targetSem.sections, newSection];
+
+                    onUpdateSections(
+                        blockId,
+                        data.semId,
+                        sourceUpdated as APIv4.UserSection[],
+                    );
+                    onUpdateSections(
+                        blockId,
+                        targetSemId,
+                        targetUpdated as APIv4.UserSection[],
+                    );
+                }
+            } catch {
+                // ignore malformed drag data
+            }
+        },
+        [block.semesters, blockId, onUpdateSections],
+    );
+
+    const handleRemoveCourse = useCallback(
+        (semId: string, index: number) => {
+            const sem = block.semesters[semId];
+            if (!sem) return;
+            const updated = sem.sections.filter((_, i) => i !== index);
+            onUpdateSections(blockId, semId, updated);
+        },
+        [block.semesters, blockId, onUpdateSections],
+    );
+
+    const handleAddCourse = useCallback(
+        (semId: string, section: APIv4.Section) => {
+            const sem = block.semesters[semId];
+            if (!sem) return;
+            const newUserSection: APIv4.UserSection = {
+                section: section.identifier,
+                attrs: { selected: true },
+            };
+            onUpdateSections(blockId, semId, [
+                ...sem.sections,
+                newUserSection,
+            ]);
+        },
+        [block.semesters, blockId, onUpdateSections],
+    );
+
+    const renderCategory = (
+        label: string,
+        semEntry: [string, APIv4.BlockSemester] | undefined,
+    ) => {
+        if (!semEntry) return null;
+        const [semId, semester] = semEntry;
+
+        return (
+            <div className={Css.hsaCategory}>
+                <h3 className={Css.hsaCategoryTitle}>{label}</h3>
+                <div className={Css.hsaGroupGrid}>
+                    {HSA_GROUPS.map(({ key, label: groupLabel }) => {
+                        const targetKey = `${semId}:${key ?? "undecided"}`;
+                        const sections = semester.sections
+                            .map((s, i) => ({ ...s, _idx: i }))
+                            .filter((s) => {
+                                const tag = (
+                                    s.attrs as { hsaTag?: string }
+                                ).hsaTag;
+                                return key === undefined
+                                    ? !tag
+                                    : tag === key;
+                            });
+                        return (
+                            <div
+                                key={targetKey}
+                                className={classNames(Css.hsaGroup, {
+                                    [Css.dropTarget]:
+                                        dragOverTarget === targetKey,
+                                })}
+                                onDragOver={(e) =>
+                                    handleDragOver(e, targetKey)
+                                }
+                                onDragLeave={handleDragLeave}
+                                onDrop={(e) =>
+                                    handleDrop(e, semId, key)
+                                }
+                            >
+                                <span className={Css.hsaGroupLabel}>
+                                    {groupLabel}
+                                </span>
+                                {sections.map((s) => {
+                                    const code = stringifyCourseCode(
+                                        s.section,
+                                    );
+                                    return (
+                                        <div
+                                            key={s._idx}
+                                            className={Css.hsaCourseItem}
+                                            draggable
+                                            onDragStart={(e) =>
+                                                handleDragStart(
+                                                    e,
+                                                    semId,
+                                                    s._idx,
+                                                )
+                                            }
+                                        >
+                                            <span
+                                                className={
+                                                    Css.hsaCourseCode
+                                                }
+                                            >
+                                                {code}
+                                            </span>
+                                            <button
+                                                className={
+                                                    Css.removeCourseBtn
+                                                }
+                                                onClick={() =>
+                                                    handleRemoveCourse(
+                                                        semId,
+                                                        s._idx,
+                                                    )
+                                                }
+                                                title="Remove"
+                                            >
+                                                x
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                                {sections.length === 0 && (
+                                    <span className={Css.hsaDropHint}>
+                                        Drag here
+                                    </span>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+                <CourseSearchBox
+                    term={CURRENT_TERM}
+                    onAdd={(section) => handleAddCourse(semId, section)}
+                    existingSections={semester.sections.map((s) => s.section)}
+                />
+            </div>
+        );
+    };
+
+    return (
+        <div className={Css.hsaPlanEditor}>
+            {renderCategory("Taken", takenEntry)}
+            {renderCategory("Proposed", proposedEntry)}
+            {renderCategory("Alternatives", alternativesEntry)}
+            <HsaRequirementsPanel
+                semesterEntries={semesterEntries}
+            />
+        </div>
+    );
+});
+
+// --- HSA Requirements Panel ---
+
+const HsaRequirementsPanel = memo(function HsaRequirementsPanel({
+    semesterEntries,
+}: {
+    semesterEntries: [string, APIv4.BlockSemester][];
+}) {
+    // Collect all terms for section lookup
+    const blockTerms = useMemo(() => {
+        const terms: APIv4.TermIdentifier[] = [];
+        const seen = new Set<string>();
+        for (const [, sem] of semesterEntries) {
+            const key = `${sem.term.year}${sem.term.term}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                terms.push(sem.term);
+            }
+        }
+        return terms;
+    }, [semesterEntries]);
+
+    const sectionsData = useSectionsForTermsQuery(
+        blockTerms.length > 0,
+        blockTerms,
+    );
+
+    const sectionsLookup = useMemo(() => {
+        const lookup = new Map<string, APIv4.Section>();
+        if (sectionsData.data) {
+            for (const section of sectionsData.data) {
+                const key = stringifySectionCodeLong(section.identifier);
+                lookup.set(key, section);
+            }
+        }
+        return lookup;
+    }, [sectionsData.data]);
+
+    // Build course maps
+    const { courseAreaCodes, courseHsaTags, courseDepartments, courseDisplayNames } =
+        useMemo(() => {
+            const areaCodes = new Map<string, string[]>();
+            const hsaTags = new Map<string, string>();
+            const depts = new Map<string, string>();
+            const displayNames = new Map<string, string>();
+
+            for (const [, sem] of semesterEntries) {
+                for (const s of sem.sections) {
+                    const code = stringifyCourseCode(s.section);
+                    const baseKey = courseBaseKey(code);
+                    displayNames.set(baseKey, code.trim());
+                    depts.set(baseKey, s.section.department);
+                    const tag = (s.attrs as { hsaTag?: string }).hsaTag;
+                    if (tag) hsaTags.set(baseKey, tag);
+
+                    const longKey = stringifySectionCodeLong(s.section);
+                    const fullSection = sectionsLookup.get(longKey);
+                    if (fullSection) {
+                        areaCodes.set(baseKey, fullSection.courseAreas);
+                    }
+                }
+            }
+
+            return {
+                courseAreaCodes: areaCodes,
+                courseHsaTags: hsaTags,
+                courseDepartments: depts,
+                courseDisplayNames: displayNames,
+            };
+        }, [semesterEntries, sectionsLookup]);
+
+    const subCategoryResults = useMemo(
+        () =>
+            computeHsaSubCategories(
+                HSA_CONFIG.subCategories,
+                HSA_CONFIG.areaCodeMatch,
+                HSA_CONFIG.excludeCourses,
+                courseAreaCodes,
+                courseHsaTags,
+                courseDepartments,
+            ),
+        [courseAreaCodes, courseHsaTags, courseDepartments],
+    );
+
+    return (
+        <div className={Css.hsaRequirements}>
+            <h3 className={Css.hsaReqTitle}>HSA Requirements Progress</h3>
+            {subCategoryResults.map((sub, i) => (
+                <div key={i} className={Css.hsaReqRow}>
+                    <div className={Css.hsaReqHeader}>
+                        <span className={Css.hsaReqName}>{sub.name}</span>
+                        <span className={Css.hsaReqProgress}>
+                            {sub.completed}/{sub.required}
+                        </span>
+                    </div>
+                    <div className={Css.hsaReqCourses}>
+                        {sub.matched.map((baseKey) => (
+                            <span
+                                key={baseKey}
+                                className={classNames(
+                                    Css.hsaReqCourse,
+                                    Css.hsaReqCompleted,
+                                )}
+                            >
+                                &#10003;{" "}
+                                {courseDisplayNames.get(baseKey) ?? baseKey}
+                            </span>
+                        ))}
+                        {Array.from(
+                            { length: Math.max(0, sub.required - sub.completed) },
+                            (_, j) => (
+                                <span
+                                    key={`empty-${j}`}
+                                    className={Css.hsaReqCourse}
+                                >
+                                    {sub.name} class
+                                </span>
+                            ),
+                        )}
+                    </div>
+                </div>
+            ))}
         </div>
     );
 });

@@ -3,7 +3,10 @@ import { SchoolEnum, SectionIdentifier, TermIdentifier } from "./course";
 
 // Re-define these to avoid circular dependency with user.ts
 const UserIdRef = z.string().regex(/u~[A-Za-z0-9\-_]{22}/);
-const UserSectionAttrsRef = z.object({ selected: z.boolean() });
+const UserSectionAttrsRef = z.object({
+    selected: z.boolean(),
+    hsaTag: z.enum(["concentration", "distribution"]).optional(),
+});
 const UserSectionRef = z.object({
     section: SectionIdentifier,
     attrs: UserSectionAttrsRef,
@@ -21,6 +24,11 @@ export const SharedBlockSnapshotId = z
     .string()
     .regex(/^snap~[A-Za-z0-9\-_]{22}$/);
 export type SharedBlockSnapshotId = z.infer<typeof SharedBlockSnapshotId>;
+
+// --- Plan type ---
+
+export const PlanType = z.enum(["standard", "hsa"]);
+export type PlanType = z.infer<typeof PlanType>;
 
 // --- Core types ---
 
@@ -48,6 +56,7 @@ export const GraduationBlock = z.object({
     name: z.string(),
     college: SchoolEnum,
     major: z.string().optional(),
+    planType: PlanType.optional(),
     semesters: z.record(BlockSemesterId, BlockSemester),
     shares: BlockShareInfo.array().optional(),
     createdAt: z.string(),
@@ -79,6 +88,7 @@ export const SharedBlockSnapshot = z.object({
     blockId: GraduationBlockId,
     college: SchoolEnum,
     major: z.string().optional(),
+    planType: PlanType.optional(),
     semesters: z.record(z.string(), BlockSemester),
     sharedAt: z.string(),
     approvals: SnapshotApproval.array().optional(),
@@ -91,6 +101,7 @@ export const CreateBlockRequest = z.object({
     name: z.string().min(1).max(100),
     college: SchoolEnum,
     major: z.string().optional(),
+    planType: PlanType.optional(),
 });
 export type CreateBlockRequest = z.infer<typeof CreateBlockRequest>;
 

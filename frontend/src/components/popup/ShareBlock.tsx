@@ -10,9 +10,12 @@ import { toast } from "react-toastify";
 
 export default memo(function ShareBlock({
     blockId,
+    planType,
 }: {
     blockId: APIv4.GraduationBlockId;
+    planType?: string;
 }) {
+    const isHsa = planType === "hsa";
     const setPopup = useStore((store) => store.setPopup);
     const getUser = useUserStore((store) => store.getUser);
 
@@ -41,10 +44,11 @@ export default memo(function ShareBlock({
 
     return (
         <div className={Css.container}>
-            <h2>Share Graduation Plan</h2>
+            <h2>{isHsa ? "Share HSA Plan" : "Share Graduation Plan"}</h2>
             <p className={Css.description}>
-                Enter your advisor's email to share this plan. They will be able
-                to view your planned courses and approve or provide feedback.
+                {isHsa
+                    ? "Enter your HSA advisor's email to share this plan. They will be able to view your HSA courses and approve or provide feedback."
+                    : "Enter your advisor's email to share this plan. They will be able to view your planned courses and approve or provide feedback."}
             </p>
             <label>
                 Advisor Email:
