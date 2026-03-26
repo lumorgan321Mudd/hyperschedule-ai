@@ -40,9 +40,13 @@ if [ ! -d "frontend/node_modules" ]; then
     (cd frontend && pnpm install)
 fi
 
+# Ports
+BACKEND_PORT=8080
+FRONTEND_PORT=3000
+
 # Kill any existing processes on our ports
-lsof -ti:8080 | xargs kill 2>/dev/null || true
-lsof -ti:5000 | xargs kill 2>/dev/null || true
+lsof -ti:$BACKEND_PORT | xargs kill 2>/dev/null || true
+lsof -ti:$FRONTEND_PORT | xargs kill 2>/dev/null || true
 
 # Start backend (static mode — no MongoDB required)
 echo -e "${GREEN}Starting backend (static mode, no DB)...${NC}"
@@ -54,39 +58,18 @@ echo -e "${GREEN}Starting frontend...${NC}"
 (cd frontend && pnpm serve) &
 FRONTEND_PID=$!
 
-# Wait for servers to be ready
+# Wait for both servers to be ready
 echo -e "${YELLOW}Waiting for servers to start...${NC}"
 for i in $(seq 1 30); do
-    if curl -s -o /dev/null http://localhost:8080/v4/term/all 2>/dev/null; then
+    BACKEND_UP=false
+    FRONTEND_UP=false
+    curl -s -o /dev/null http://localhost:$BACKEND_PORT/v4/term/all 2>/dev/null && BACKEND_UP=true
+    curl -s -o /dev/null http://localhost:$FRONTEND_PORT 2>/dev/null && FRONTEND_UP=true
+    if $BACKEND_UP && $FRONTEND_UP; then
         break
     fi
     sleep 1
 done
-
-# Detect which port the frontend ended up on
-FRONTEND_PORT=""
-for port in 5000 5001 5002 5003; do
-    if curl -s -o /dev/null http://localhost:$port 2>/dev/null; then
-        FRONTEND_PORT=$port
-        break
-    fi
-done
-
-if [ -z "$FRONTEND_PORT" ]; then
-    echo -e "${YELLOW}Waiting a bit more for frontend...${NC}"
-    sleep 5
-    for port in 5000 5001 5002 5003; do
-        if curl -s -o /dev/null http://localhost:$port 2>/dev/null; then
-            FRONTEND_PORT=$port
-            break
-        fi
-    done
-fi
-
-if [ -z "$FRONTEND_PORT" ]; then
-    echo "Warning: Could not detect frontend port. Check terminal output above."
-    FRONTEND_PORT=5000
-fi
 
 echo ""
 echo -e "${CYAN}========================================${NC}"

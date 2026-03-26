@@ -33,7 +33,7 @@ devLoginApp.get("/dev-login", (request, response) => {
 const d=new FormData(e.target),p=new URLSearchParams();
 d.forEach((v,k)=>{if(v)p.set(k,v)});
 await fetch('/auth/dev-login?'+p,{method:'POST',credentials:'include'});
-window.location=new URLSearchParams(window.location.search).get('redirect')||'http://localhost:5003/'}</script></body></html>`);
+window.location=new URLSearchParams(window.location.search).get('redirect')||'http://localhost:3000/'}</script></body></html>`);
 });
 
 devLoginApp.post("/dev-login", async (request, response) => {
