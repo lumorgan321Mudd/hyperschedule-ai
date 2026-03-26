@@ -95,17 +95,26 @@
     border-radius: 3px;
     margin-bottom: 0.5rem;
     overflow: hidden;
+    position: relative;
+}
+
+.progressBarProposed {
+    height: 100%;
+    background-color: var(--palette-yellow, #facc15);
+    border-radius: 3px;
+    transition: width 300ms ease;
+    position: absolute;
+    top: 0;
+    left: 0;
 }
 
 .progressBarFill {
     height: 100%;
-    background-color: var(--hbg);
+    background-color: var(--palette-green, #22c55e);
     border-radius: 3px;
     transition: width 300ms ease;
-}
-
-.progressComplete {
-    background-color: var(--palette-green, #22c55e);
+    position: relative;
+    z-index: 1;
 }
 
 .description {
@@ -140,10 +149,22 @@
         background-color: var(--select);
         border-left-color: var(--palette-green, #22c55e);
     }
+
+    &.proposed {
+        background-color: color-mix(in srgb, var(--palette-yellow, #facc15) 50%, var(--bg-0));
+        border-left-color: var(--palette-yellow, #facc15);
+    }
 }
 
 .completedCheck {
     color: var(--palette-green, #22c55e);
+    font-weight: bold;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.proposedCheck {
+    color: var(--palette-yellow, #facc15);
     font-weight: bold;
     font-size: 0.9rem;
     flex-shrink: 0;
@@ -170,6 +191,14 @@
     color: var(--fg-2);
     font-size: 0.8rem;
     white-space: nowrap;
+}
+
+.viaBadge {
+    font-size: 0.7rem;
+    color: var(--palette-orange);
+    font-style: italic;
+    white-space: nowrap;
+    cursor: help;
 }
 
 .subCategoryList {

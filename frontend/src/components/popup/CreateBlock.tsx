@@ -1,7 +1,7 @@
-import { memo, useState, useCallback } from "react";
+import { memo, useState, useCallback, useEffect } from "react";
 import Css from "./CreateBlock.module.css";
 import AppCss from "@components/App.module.css";
-import { apiFetch } from "@lib/api";
+import { apiFetch, fetchWithToast, schoolCodeFromEnum } from "@lib/api";
 import { useUserStore } from "@hooks/store/user";
 import useStore from "@hooks/store";
 import * as APIv4 from "hyperschedule-shared/api/v4";
@@ -26,7 +26,31 @@ export default memo(function CreateBlock() {
         server?.school ?? APIv4.School.HMC,
     );
     const [major, setMajor] = useState("");
+    const [majors, setMajors] = useState<{ key: string; name: string }[]>([]);
     const [submitting, setSubmitting] = useState(false);
+
+    // Fetch available majors when college changes
+    useEffect(() => {
+        const code = schoolCodeFromEnum(college);
+        fetchWithToast(`${__API_URL__}/v4/major-requirements/${code}`, {
+            credentials: "include",
+        })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data: { majors: Record<string, { name: string }> } | null) => {
+                if (data?.majors) {
+                    const entries = Object.entries(data.majors).map(
+                        ([key, m]) => ({ key, name: m.name }),
+                    );
+                    setMajors(entries);
+                    if (entries.some((e) => e.key === "engineering")) {
+                        setMajor("engineering");
+                    }
+                } else {
+                    setMajors([]);
+                }
+            })
+            .catch(() => setMajors([]));
+    }, [college]);
 
     const handleCreate = useCallback(async () => {
         if (!name.trim()) {
@@ -38,7 +62,7 @@ export default memo(function CreateBlock() {
             await apiFetch.createBlock({
                 name: name.trim(),
                 college,
-                ...(major.trim() ? { major: major.trim() } : {}),
+                ...(major ? { major } : {}),
             });
             await getUser();
             setPopup(null);
@@ -79,13 +103,18 @@ export default memo(function CreateBlock() {
                 </select>
             </label>
             <label>
-                Major (optional):
-                <input
-                    type="text"
+                Major:
+                <select
                     value={major}
                     onChange={(e) => setMajor(e.target.value)}
-                    placeholder="e.g., Computer Science"
-                />
+                >
+                    <option value="">None</option>
+                    {majors.map((m) => (
+                        <option key={m.key} value={m.key}>
+                            {m.name}
+                        </option>
+                    ))}
+                </select>
             </label>
             <button
                 className={classNames(AppCss.defaultButton, Css.createButton)}

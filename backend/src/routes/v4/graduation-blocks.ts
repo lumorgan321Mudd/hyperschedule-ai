@@ -11,7 +11,7 @@ import {
     deleteSemester,
     setShareInfo,
 } from "../../db/models/graduation-block";
-import { upsertSnapshot } from "../../db/models/shared-snapshot";
+import { createSnapshot, getSnapshotsForStudent, deleteSnapshot } from "../../db/models/shared-snapshot";
 import { getUser } from "../../db/models/user";
 import { createLogger } from "../../logger";
 
@@ -81,6 +81,39 @@ graduationBlocksApp.post(
         return response
             .header("Content-Type", "application/json")
             .send({ blockId } satisfies APIv4.CreateBlockResponse);
+    },
+);
+
+// GET /my-snapshots — get all snapshots for current student
+graduationBlocksApp.get(
+    "/my-snapshots",
+    async function (request: Request, response: Response) {
+        if (request.userToken === null) return response.status(401).end();
+        const snapshots = await getSnapshotsForStudent(
+            request.userToken.uuid,
+        );
+        return response
+            .header("Content-Type", "application/json")
+            .send({ snapshots } satisfies APIv4.GetMySnapshotsResponse);
+    },
+);
+
+// DELETE /snapshots/:snapshotId — delete a snapshot (student only)
+graduationBlocksApp.delete(
+    "/snapshots/:snapshotId",
+    async function (request: Request, response: Response) {
+        if (request.userToken === null) return response.status(401).end();
+        const snapshotId = request.params
+            .snapshotId as APIv4.SharedBlockSnapshotId;
+        const deleted = await deleteSnapshot(
+            snapshotId,
+            request.userToken.uuid,
+        );
+        if (!deleted)
+            return response
+                .status(404)
+                .send("Snapshot not found or not owned by you");
+        return response.status(204).end();
     },
 );
 
@@ -223,8 +256,8 @@ graduationBlocksApp.post(
         if (!block)
             return response.status(404).send("Block not found");
 
-        // Create/update snapshot
-        const snapshotId = await upsertSnapshot({
+        // Create immutable snapshot (deep-copy semesters so edits don't mutate the snapshot)
+        const snapshotId = await createSnapshot({
             studentUserId: user._id,
             studentEppn: user.eppn,
             studentSchool: user.school,
@@ -234,7 +267,7 @@ graduationBlocksApp.post(
             college: block.college,
             major: block.major,
             planType: block.planType,
-            semesters: block.semesters,
+            semesters: JSON.parse(JSON.stringify(block.semesters)),
             sharedAt: new Date().toISOString(),
         });
 

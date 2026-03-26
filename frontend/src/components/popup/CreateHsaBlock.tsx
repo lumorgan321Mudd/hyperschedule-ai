@@ -57,7 +57,7 @@ export default memo(function CreateHsaBlock() {
     return (
         <div className={Css.container}>
             <h2>Create HSA Plan</h2>
-            <p style={{ fontSize: "0.85rem", color: "var(--fg-2)", margin: 0 }}>
+            <p className={Css.description}>
                 Create a plan to organize your HSA courses into Taken and
                 Proposed categories with Concentration/Distribution tagging.
             </p>
@@ -73,10 +73,9 @@ export default memo(function CreateHsaBlock() {
                 />
             </label>
             <button
-                className={classNames(AppCss.defaultButton, Css.createButton)}
+                className={classNames(AppCss.defaultButton, Css.hsaCreateButton)}
                 onClick={handleCreate}
                 disabled={submitting}
-                style={{ backgroundColor: "var(--palette-purple, #8b5cf6)", borderColor: "var(--palette-purple, #8b5cf6)" }}
             >
                 {submitting ? "Creating..." : "Create HSA Plan"}
             </button>

@@ -5,7 +5,7 @@ import { SchoolEnum, SectionIdentifier, TermIdentifier } from "./course";
 const UserIdRef = z.string().regex(/u~[A-Za-z0-9\-_]{22}/);
 const UserSectionAttrsRef = z.object({
     selected: z.boolean(),
-    hsaTag: z.enum(["concentration", "distribution"]).optional(),
+    requirementTags: z.string().array().optional(),
 });
 const UserSectionRef = z.object({
     section: SectionIdentifier,
@@ -61,6 +61,7 @@ export const GraduationBlock = z.object({
     shares: BlockShareInfo.array().optional(),
     createdAt: z.string(),
     updatedAt: z.string(),
+    /** @deprecated Kept for backward compat with persisted data. */
     dirtyAfterShare: z.boolean().optional(),
 });
 export type GraduationBlock = z.infer<typeof GraduationBlock>;
@@ -180,6 +181,16 @@ export const SnapshotApprovalRequest = z.object({
     advisorName: z.string(),
 });
 export type SnapshotApprovalRequest = z.infer<typeof SnapshotApprovalRequest>;
+
+export const GetMySnapshotsResponse = z.object({
+    snapshots: SharedBlockSnapshot.array(),
+});
+export type GetMySnapshotsResponse = z.infer<typeof GetMySnapshotsResponse>;
+
+export const DeleteSnapshotRequest = z.object({
+    snapshotId: SharedBlockSnapshotId,
+});
+export type DeleteSnapshotRequest = z.infer<typeof DeleteSnapshotRequest>;
 
 // --- Role types ---
 

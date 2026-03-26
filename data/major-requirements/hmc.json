@@ -36,8 +36,8 @@
             "subCategories": [
                 { "name": "Writing Intensive", "coursesRequired": 1, "autoDetect": { "areaCode": "4WRT" } },
                 { "name": "HMC Faculty", "coursesRequired": 4, "autoDetect": { "areaCode": "4HSA" } },
-                { "name": "Concentration", "coursesRequired": 4, "tagValue": "concentration", "description": "4 courses in one discipline" },
-                { "name": "Distribution", "coursesRequired": 5, "tagValue": "distribution", "countMode": "distinctDepartments", "description": "Courses across 5 different disciplines" }
+                { "name": "Concentration", "coursesRequired": 4, "tagValue": "hsa-concentration", "countMode": "largestDepartmentCluster", "description": "4 courses in one discipline" },
+                { "name": "Distribution", "coursesRequired": 5, "tagValue": "hsa-distribution", "countMode": "distinctDepartments", "description": "Courses across 5 different disciplines" }
             ]
         },
         {
@@ -69,6 +69,7 @@
                 "electives": {
                     "description": "Three upper-division CS electives (9 credits, courses numbered 100+, excluding clinic and colloquium). Approved cross-listed courses from other departments also count.",
                     "coursesRequired": 3,
+                    "tagValue": "cs-elective",
                     "courses": [
                         { "course": "BIOL188 HM", "title": "Advanced Computational Biology", "credits": 3 },
                         { "course": "CHEM080 HM", "title": "Numerical Methods for the Central Science", "credits": 3 },
@@ -111,6 +112,7 @@
                 "electives": {
                     "description": "Three additional mathematics electives at or above MATH 100 (minimum 7 credits total)",
                     "coursesRequired": 3,
+                    "tagValue": "math-elective",
                     "level": "100+"
                 }
             }
@@ -137,7 +139,8 @@
                 ],
                 "electives": {
                     "description": "Two additional physics half-course electives",
-                    "coursesRequired": 2
+                    "coursesRequired": 2,
+                    "tagValue": "physics-elective"
                 }
             }
         },
@@ -167,6 +170,7 @@
                 "electives": {
                     "description": "Three upper-division engineering technical electives (numbered 100+). CSCI070 HM also accepted.",
                     "coursesRequired": 3,
+                    "tagValue": "engineering-elective",
                     "level": "100+"
                 }
             }
@@ -190,7 +194,8 @@
                 ],
                 "electives": {
                     "description": "11 credits of advanced biology: at least 2 laboratory courses, 1 seminar-style course, and additional electives. Up to 2 credits of BIOL197 (Directed Reading) allowed.",
-                    "coursesRequired": 4
+                    "coursesRequired": 4,
+                    "tagValue": "biology-elective"
                 }
             }
         },
@@ -212,7 +217,8 @@
                 ],
                 "electives": {
                     "description": "Four foundation laboratories chosen from: CHEM053, CHEM058, CHEM109, CHEM110, CHEM184. Plus 8-9 credits of in-depth chemistry electives (100+ level).",
-                    "coursesRequired": 7
+                    "coursesRequired": 7,
+                    "tagValue": "chemistry-elective"
                 }
             }
         },
@@ -237,7 +243,8 @@
                 ],
                 "electives": {
                     "description": "12 credits of upper-division technical electives (numbered 100+): minimum 6 credits from mathematics, minimum 6 credits from computer science.",
-                    "coursesRequired": 4
+                    "coursesRequired": 4,
+                    "tagValue": "joint-cs-math-elective"
                 }
             }
         },
@@ -291,7 +298,8 @@
                 ],
                 "electives": {
                     "description": "Two chemistry laboratory electives from: CHEM053, CHEM109, CHEM110, CHEM111, BIOL184/CHEM184. Plus 3 credits of upper-level biology electives.",
-                    "coursesRequired": 3
+                    "coursesRequired": 3,
+                    "tagValue": "joint-chem-bio-elective"
                 }
             }
         },
@@ -320,7 +328,8 @@
                 ],
                 "electives": {
                     "description": "One 3-credit CS elective (100+) and one physics/CS elective (PHYS170 or 3-credit CS course).",
-                    "coursesRequired": 2
+                    "coursesRequired": 2,
+                    "tagValue": "joint-cs-physics-elective"
                 }
             }
         },
@@ -343,7 +352,8 @@
                 ],
                 "electives": {
                     "description": "One 3-credit math course, one 3-credit CS course, five additional math/CS credits, one biology seminar, one biology laboratory, one 3-credit technical elective, and a 2-semester capstone (thesis or clinic).",
-                    "coursesRequired": 6
+                    "coursesRequired": 6,
+                    "tagValue": "mcb-elective"
                 }
             }
         }

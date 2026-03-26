@@ -85,6 +85,12 @@ export const schema = {
             status: 200,
         },
     }),
+    mySnapshots: Schema.route("/v4/graduation-blocks/my-snapshots", {
+        get: {
+            return: APIv4.GetMySnapshotsResponse,
+            status: 200,
+        },
+    }),
 };
 
 function validateResponse<Schema extends Schema.MethodSchemaAny>(
@@ -170,9 +176,10 @@ export const apiFetch = {
     setSectionAttrs: schemaFetch(schema.section, "patch"),
     replaceSections: schemaFetch(schema.replaceSections, "post"),
     // Graduation blocks
-    getBlocks: schemaFetch(schema.graduationBlocks, "get"),
     createBlock: schemaFetch(schema.graduationBlocks, "post"),
     shareBlock: schemaFetch(schema.shareBlock, "post"),
+    // Snapshots (student)
+    getMySnapshots: schemaFetch(schema.mySnapshots, "get"),
     // Advisor
     setRole: schemaFetch(schema.advisorRole, "patch"),
     getSharedSnapshots: schemaFetch(schema.sharedSnapshots, "get"),
@@ -217,6 +224,15 @@ export async function apiBlockSemesterAction(
     });
 }
 
+export async function apiDeleteSnapshot(
+    snapshotId: string,
+): Promise<Response> {
+    return fetchWithToast(
+        `${__API_URL__}/v4/graduation-blocks/snapshots/${snapshotId}`,
+        { method: "DELETE", credentials: "include" },
+    );
+}
+
 export async function apiApproveSnapshot(
     snapshotId: string,
     body: unknown,
@@ -230,4 +246,22 @@ export async function apiApproveSnapshot(
             body: JSON.stringify(body),
         },
     );
+}
+
+/** Convert school enum to lowercase code used in requirement data file paths. */
+export function schoolCodeFromEnum(school: APIv4.School): string {
+    switch (school) {
+        case APIv4.School.HMC:
+            return "hmc";
+        case APIv4.School.POM:
+            return "pomona";
+        case APIv4.School.SCR:
+            return "scripps";
+        case APIv4.School.CMC:
+            return "cmc";
+        case APIv4.School.PTZ:
+            return "pitzer";
+        default:
+            return "hmc";
+    }
 }

@@ -16,12 +16,9 @@ export const ScheduleId = z.string().regex(/s~[A-Za-z0-9\-_]{22}/);
 export type UserId = z.infer<typeof UserId>;
 export type ScheduleId = z.infer<typeof ScheduleId>;
 
-export const HsaTag = z.enum(["concentration", "distribution"]);
-export type HsaTag = z.infer<typeof HsaTag>;
-
 export const UserSectionAttrs = z.object({
     selected: z.boolean(),
-    hsaTag: HsaTag.optional(),
+    requirementTags: z.string().array().optional(),
 });
 export type UserSectionAttrs = z.infer<typeof UserSectionAttrs>;
 

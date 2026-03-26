@@ -148,9 +148,14 @@ export async function getSectionsForTerm(
 export async function getSectionsForTerms(
     terms: APIv4.TermIdentifier[],
 ): Promise<APIv4.Section[]> {
-    let sections: APIv4.Section[] = [];
-    for (const term of terms) {
-        Array.prototype.push.apply(sections, await getSectionsForTerm(term));
+    const results = await Promise.allSettled(
+        terms.map((term) => getSectionsForTerm(term)),
+    );
+    const sections: APIv4.Section[] = [];
+    for (const result of results) {
+        if (result.status === "fulfilled") {
+            Array.prototype.push.apply(sections, result.value);
+        }
     }
     return sections;
 }

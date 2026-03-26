@@ -1,13 +1,14 @@
 import { memo, useEffect, useState, useCallback, useMemo } from "react";
 import Css from "./AdvisorPortal.module.css";
 import AppCss from "@components/App.module.css";
-import { apiFetch, apiApproveSnapshot, fetchWithToast } from "@lib/api";
+import { apiFetch, apiApproveSnapshot, fetchWithToast, schoolCodeFromEnum } from "@lib/api";
 import * as APIv4 from "hyperschedule-shared/api/v4";
-import { stringifyCourseCode, stringifySectionCodeLong } from "hyperschedule-shared/api/v4";
+import { stringifyCourseCode, stringifySectionCodeLong, termIsBefore } from "hyperschedule-shared/api/v4";
+import { CURRENT_TERM } from "hyperschedule-shared/api/current-term";
 import classNames from "classnames";
 import { toast } from "react-toastify";
 import { useSectionsForTermsQuery } from "@hooks/api/query";
-import { courseBaseKey, computeHsaSubCategories, HSA_CONFIG } from "@lib/hsa-requirements";
+import { courseBaseKey, computeHsaSubCategories, HSA_CONFIG, type SubCategory } from "@lib/hsa-requirements";
 
 // --- Shared requirement types (same as GraduationRequirements) ---
 
@@ -24,6 +25,9 @@ interface RequirementGroup {
     courses: RequirementCourse[];
     creditsRequired?: number;
     coursesRequired?: number;
+    areaCodeMatch?: string[];
+    excludeCourses?: string[];
+    subCategories?: SubCategory[];
 }
 
 interface MajorInfo {
@@ -51,23 +55,6 @@ interface SchoolData {
     last_updated?: string;
     general_requirements?: RequirementGroup[];
     majors: Record<string, MajorInfo>;
-}
-
-function schoolCodeFromEnum(school: APIv4.School): string {
-    switch (school) {
-        case APIv4.School.HMC:
-            return "hmc";
-        case APIv4.School.POM:
-            return "pomona";
-        case APIv4.School.SCR:
-            return "scripps";
-        case APIv4.School.CMC:
-            return "cmc";
-        case APIv4.School.PTZ:
-            return "pitzer";
-        default:
-            return "hmc";
-    }
 }
 
 export default memo(function AdvisorPortal() {
@@ -207,11 +194,67 @@ const SnapshotDetail = memo(function SnapshotDetail({
             .finally(() => setReqLoading(false));
     }, [snapshot.college]);
 
-    // Build completed courses set from the snapshot's semesters
+    // Derive unique terms from snapshot sections for area-code lookups
+    const snapshotTerms = useMemo(() => {
+        const terms: APIv4.TermIdentifier[] = [];
+        const seen = new Set<string>();
+        for (const sem of Object.values(snapshot.semesters)) {
+            for (const s of sem.sections) {
+                const key = `${s.section.year}${s.section.term}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    terms.push({ year: s.section.year, term: s.section.term as APIv4.Term });
+                }
+            }
+        }
+        return terms;
+    }, [snapshot.semesters]);
+
+    const sectionsData = useSectionsForTermsQuery(snapshotTerms.length > 0, snapshotTerms).data;
+
+    // Build a lookup from section long key to full Section data
+    const sectionsLookup = useMemo(() => {
+        const lookup = new Map<string, APIv4.Section>();
+        if (sectionsData) {
+            for (const section of sectionsData) {
+                lookup.set(stringifySectionCodeLong(section.identifier), section);
+            }
+        }
+        return lookup;
+    }, [sectionsData]);
+
+    // Build completed/proposed courses sets + area code maps from the snapshot's semesters
     const completedCourses = new Set<string>();
+    const proposedCourses = new Set<string>();
+    const courseAreaCodes = new Map<string, string[]>();
+    const courseDisplayNames = new Map<string, string>();
+    const courseRequirementTags = new Map<string, string[]>();
+    const courseDepartments = new Map<string, string>();
+    const isHsa = snapshot.planType === "hsa";
     for (const sem of Object.values(snapshot.semesters)) {
+        if (isHsa && sem.name === "Alternatives") continue;
+        const isTaken = isHsa
+            ? sem.name === "Taken"
+            : termIsBefore(sem.term, CURRENT_TERM);
+        const targetSet = isTaken ? completedCourses : proposedCourses;
         for (const s of sem.sections) {
-            completedCourses.add(courseBaseKey(stringifyCourseCode(s.section)));
+            const code = stringifyCourseCode(s.section);
+            const baseKey = courseBaseKey(code);
+            targetSet.add(baseKey);
+            courseDisplayNames.set(baseKey, code.trim());
+            courseDepartments.set(baseKey, s.section.department);
+            const tags = s.attrs.requirementTags;
+            if (tags && tags.length > 0) {
+                courseRequirementTags.set(baseKey, tags);
+                for (const tag of tags) {
+                    targetSet.add(courseBaseKey(tag));
+                }
+            }
+            const longKey = stringifySectionCodeLong(s.section);
+            const fullSection = sectionsLookup.get(longKey);
+            if (fullSection) {
+                courseAreaCodes.set(baseKey, fullSection.courseAreas);
+            }
         }
     }
 
@@ -366,6 +409,11 @@ const SnapshotDetail = memo(function SnapshotDetail({
                                                     key={i}
                                                     group={group}
                                                     completedCourses={completedCourses}
+                                                    proposedCourses={proposedCourses}
+                                                    courseAreaCodes={courseAreaCodes}
+                                                    courseDisplayNames={courseDisplayNames}
+                                                    courseRequirementTags={courseRequirementTags}
+                                                    courseDepartments={courseDepartments}
                                                 />
                                             ),
                                         )}
@@ -390,6 +438,11 @@ const SnapshotDetail = memo(function SnapshotDetail({
                                                             key={i}
                                                             course={course}
                                                             completed={completedCourses.has(
+                                                                courseBaseKey(
+                                                                    course.course,
+                                                                ),
+                                                            )}
+                                                            proposed={proposedCourses.has(
                                                                 courseBaseKey(
                                                                     course.course,
                                                                 ),
@@ -510,22 +563,107 @@ const SnapshotDetail = memo(function SnapshotDetail({
 const RequirementGroupView = memo(function RequirementGroupView({
     group,
     completedCourses,
+    proposedCourses,
+    courseAreaCodes,
+    courseDisplayNames,
+    courseRequirementTags,
+    courseDepartments,
 }: {
     group: RequirementGroup;
     completedCourses: Set<string>;
+    proposedCourses?: Set<string>;
+    courseAreaCodes?: Map<string, string[]>;
+    courseDisplayNames?: Map<string, string>;
+    courseRequirementTags?: Map<string, string[]>;
+    courseDepartments?: Map<string, string>;
 }) {
-    const completed = group.courses.filter((c) =>
-        completedCourses.has(courseBaseKey(c.course)),
-    ).length;
+    // Area-code-based matching (HSA, PE)
+    const excludeKeys = new Set(
+        (group.excludeCourses ?? []).map((c) => courseBaseKey(c)),
+    );
+    const areaMatched: string[] = [];
+    if (group.areaCodeMatch && group.areaCodeMatch.length > 0 && courseAreaCodes) {
+        for (const [baseKey, areas] of courseAreaCodes) {
+            if (excludeKeys.has(baseKey)) continue;
+            if (areas.some((a) => group.areaCodeMatch!.includes(a))) {
+                areaMatched.push(baseKey);
+            }
+        }
+    }
+
+    // Sub-category progress
+    const subCategoryResults = group.subCategories?.map((sub) => {
+        const matched: string[] = [];
+
+        if (sub.autoDetect?.areaCode && courseAreaCodes) {
+            for (const [baseKey, areas] of courseAreaCodes) {
+                if (excludeKeys.has(baseKey)) continue;
+                if (areas.includes(sub.autoDetect.areaCode)) {
+                    matched.push(baseKey);
+                }
+            }
+        }
+
+        if (sub.tagValue && courseRequirementTags) {
+            for (const [baseKey, tags] of courseRequirementTags) {
+                if (excludeKeys.has(baseKey)) continue;
+                if (matched.includes(baseKey)) continue;
+                if (tags.includes(sub.tagValue!)) {
+                    matched.push(baseKey);
+                }
+            }
+        }
+
+        let completed: number;
+        if (sub.countMode === "largestDepartmentCluster" && courseDepartments) {
+            const deptCounts = new Map<string, number>();
+            for (const baseKey of matched) {
+                const dept = courseDepartments.get(baseKey);
+                if (dept) deptCounts.set(dept, (deptCounts.get(dept) ?? 0) + 1);
+            }
+            completed = deptCounts.size > 0 ? Math.max(...deptCounts.values()) : 0;
+        } else if (sub.countMode === "distinctDepartments" && courseDepartments) {
+            const depts = new Set<string>();
+            for (const baseKey of matched) {
+                const dept = courseDepartments.get(baseKey);
+                if (dept) depts.add(dept);
+            }
+            completed = depts.size;
+        } else {
+            completed = matched.length;
+        }
+
+        return {
+            name: sub.name,
+            required: sub.coursesRequired,
+            completed,
+            matched,
+            description: sub.description,
+        };
+    });
+
+    const isAreaBased = group.areaCodeMatch !== undefined && group.areaCodeMatch.length > 0;
+    const completed = isAreaBased
+        ? areaMatched.filter((k) => !proposedCourses || !proposedCourses.has(k) || completedCourses.has(k)).length
+        : group.courses.filter((c) => completedCourses.has(courseBaseKey(c.course))).length;
+    const proposed = proposedCourses
+        ? isAreaBased
+            ? areaMatched.filter((k) => proposedCourses.has(k) && !completedCourses.has(k)).length
+            : group.courses.filter((c) =>
+                !completedCourses.has(courseBaseKey(c.course)) &&
+                proposedCourses.has(courseBaseKey(c.course)),
+            ).length
+        : 0;
     const total = group.coursesRequired ?? group.courses.length;
+    const hasCheck = completedCourses.size > 0 || (proposedCourses?.size ?? 0) > 0;
 
     return (
         <div className={Css.reqGroup}>
             <h5 className={Css.reqGroupTitle}>
                 {group.name}
-                {total > 0 && completedCourses.size > 0 && (
+                {total > 0 && hasCheck && (
                     <span className={Css.reqProgressBadge}>
-                        {completed}/{total}
+                        {completed + proposed}/{total}
                     </span>
                 )}
             </h5>
@@ -537,6 +675,61 @@ const RequirementGroupView = memo(function RequirementGroupView({
                     Credits required: {group.creditsRequired}
                 </p>
             )}
+            {/* Sub-categories (HSA concentration/distribution/etc.) */}
+            {subCategoryResults && (
+                <div className={Css.reqSubCategoryList}>
+                    {subCategoryResults.map((sub, i) => (
+                        <div key={i} className={Css.reqSubCategory}>
+                            <div className={Css.reqSubCategoryHeader}>
+                                <span className={Css.reqSubCategoryName}>
+                                    {sub.name}
+                                </span>
+                                <span className={Css.reqSubCategoryProgress}>
+                                    {sub.completed}/{sub.required}
+                                </span>
+                            </div>
+                            {sub.description && (
+                                <span className={Css.reqSubCategoryDesc}>
+                                    {sub.description}
+                                </span>
+                            )}
+                            <div className={Css.reqCourseList}>
+                                {sub.matched.map((baseKey) => {
+                                    const isTaken = completedCourses.has(baseKey);
+                                    const isProp = !isTaken && !!proposedCourses?.has(baseKey);
+                                    return (
+                                        <div
+                                            key={baseKey}
+                                            className={classNames(
+                                                Css.reqCourseItem,
+                                                isTaken && Css.reqCompleted,
+                                                isProp && Css.reqProposed,
+                                            )}
+                                        >
+                                            {isTaken && <span className={Css.reqCompletedCheck}>&#10003;</span>}
+                                            {isProp && <span className={Css.reqProposedCheck}>&#10003;</span>}
+                                            <span className={Css.reqCourseCode}>
+                                                {courseDisplayNames?.get(baseKey) ?? baseKey}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                                {Array.from(
+                                    { length: Math.max(0, sub.required - sub.completed) },
+                                    (_, j) => (
+                                        <div key={`empty-${j}`} className={Css.reqCourseItem}>
+                                            <span className={Css.reqCourseCode}>
+                                                {sub.name} class
+                                            </span>
+                                        </div>
+                                    ),
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+            {/* Static course list (Common Core, etc.) */}
             {group.courses.length > 0 && (
                 <div className={Css.reqCourseList}>
                     {group.courses.map((course, i) => (
@@ -546,8 +739,36 @@ const RequirementGroupView = memo(function RequirementGroupView({
                             completed={completedCourses.has(
                                 courseBaseKey(course.course),
                             )}
+                            proposed={proposedCourses?.has(
+                                courseBaseKey(course.course),
+                            )}
                         />
                     ))}
+                </div>
+            )}
+            {/* Dynamic area-code-matched courses — only for groups without sub-categories */}
+            {isAreaBased && !subCategoryResults && (
+                <div className={Css.reqCourseList}>
+                    {areaMatched.map((baseKey) => {
+                        const isTaken = completedCourses.has(baseKey);
+                        const isProp = !isTaken && !!proposedCourses?.has(baseKey);
+                        return (
+                            <div
+                                key={baseKey}
+                                className={classNames(
+                                    Css.reqCourseItem,
+                                    isTaken && Css.reqCompleted,
+                                    isProp && Css.reqProposed,
+                                )}
+                            >
+                                {isTaken && <span className={Css.reqCompletedCheck}>&#10003;</span>}
+                                {isProp && <span className={Css.reqProposedCheck}>&#10003;</span>}
+                                <span className={Css.reqCourseCode}>
+                                    {courseDisplayNames?.get(baseKey) ?? baseKey}
+                                </span>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </div>
@@ -557,18 +778,26 @@ const RequirementGroupView = memo(function RequirementGroupView({
 const ReqCourseItem = memo(function ReqCourseItem({
     course,
     completed,
+    proposed,
 }: {
     course: RequirementCourse;
     completed: boolean;
+    proposed?: boolean;
 }) {
+    const showProposed = !!proposed && !completed;
+
     return (
         <div
             className={classNames(Css.reqCourseItem, {
                 [Css.reqCompleted]: completed,
+                [Css.reqProposed]: showProposed,
             })}
         >
             {completed && (
                 <span className={Css.reqCompletedCheck}>&#10003;</span>
+            )}
+            {showProposed && (
+                <span className={Css.reqProposedCheck}>&#10003;</span>
             )}
             <span className={Css.reqCourseCode}>{course.course}</span>
             {course.title && (
@@ -585,8 +814,8 @@ const ReqCourseItem = memo(function ReqCourseItem({
 
 const HSA_GROUPS: { key: string | undefined; label: string }[] = [
     { key: undefined, label: "Undecided" },
-    { key: "concentration", label: "Concentration" },
-    { key: "distribution", label: "Distribution" },
+    { key: "hsa-concentration", label: "Concentration" },
+    { key: "hsa-distribution", label: "Distribution" },
 ];
 
 const HsaSnapshotView = memo(function HsaSnapshotView({
@@ -599,19 +828,27 @@ const HsaSnapshotView = memo(function HsaSnapshotView({
     const proposedEntry = semesterEntries.find(([, s]) => s.name === "Proposed");
     const alternativesEntry = semesterEntries.find(([, s]) => s.name === "Alternatives");
 
-    // Collect terms for section lookup
+    // Exclude "Alternatives" from requirement calculations
+    const gradEntries = useMemo(
+        () => semesterEntries.filter(([, s]) => s.name !== "Alternatives"),
+        [semesterEntries],
+    );
+
+    // Derive terms from actual section identifiers for area code lookup
     const blockTerms = useMemo(() => {
         const terms: APIv4.TermIdentifier[] = [];
         const seen = new Set<string>();
-        for (const [, sem] of semesterEntries) {
-            const key = `${sem.term.year}${sem.term.term}`;
-            if (!seen.has(key)) {
-                seen.add(key);
-                terms.push(sem.term);
+        for (const [, sem] of gradEntries) {
+            for (const s of sem.sections) {
+                const key = `${s.section.year}${s.section.term}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    terms.push({ year: s.section.year, term: s.section.term as APIv4.Term });
+                }
             }
         }
         return terms;
-    }, [semesterEntries]);
+    }, [gradEntries]);
 
     const sectionsData = useSectionsForTermsQuery(
         blockTerms.length > 0,
@@ -629,22 +866,28 @@ const HsaSnapshotView = memo(function HsaSnapshotView({
         return lookup;
     }, [sectionsData.data]);
 
-    // Build course maps
-    const { courseAreaCodes, courseHsaTags, courseDepartments, courseDisplayNames } =
+    // Build course maps, splitting into taken/proposed
+    const { takenKeys, proposedKeys, courseAreaCodes, courseRequirementTags, courseDepartments, courseDisplayNames } =
         useMemo(() => {
+            const taken = new Set<string>();
+            const proposed = new Set<string>();
             const areaCodes = new Map<string, string[]>();
-            const hsaTags = new Map<string, string>();
+            const reqTags = new Map<string, string[]>();
             const depts = new Map<string, string>();
             const displayNames = new Map<string, string>();
 
-            for (const [, sem] of semesterEntries) {
+            for (const [, sem] of gradEntries) {
+                const isTaken = sem.name === "Taken";
+                const targetSet = isTaken ? taken : proposed;
+
                 for (const s of sem.sections) {
                     const code = stringifyCourseCode(s.section);
                     const bk = courseBaseKey(code);
+                    targetSet.add(bk);
                     displayNames.set(bk, code.trim());
                     depts.set(bk, s.section.department);
-                    const tag = (s.attrs as { hsaTag?: string }).hsaTag;
-                    if (tag) hsaTags.set(bk, tag);
+                    const tags = s.attrs.requirementTags;
+                    if (tags && tags.length > 0) reqTags.set(bk, tags);
 
                     const longKey = stringifySectionCodeLong(s.section);
                     const fullSection = sectionsLookup.get(longKey);
@@ -655,12 +898,14 @@ const HsaSnapshotView = memo(function HsaSnapshotView({
             }
 
             return {
+                takenKeys: taken,
+                proposedKeys: proposed,
                 courseAreaCodes: areaCodes,
-                courseHsaTags: hsaTags,
+                courseRequirementTags: reqTags,
                 courseDepartments: depts,
                 courseDisplayNames: displayNames,
             };
-        }, [semesterEntries, sectionsLookup]);
+        }, [gradEntries, sectionsLookup]);
 
     const subCategoryResults = useMemo(
         () =>
@@ -669,10 +914,10 @@ const HsaSnapshotView = memo(function HsaSnapshotView({
                 HSA_CONFIG.areaCodeMatch,
                 HSA_CONFIG.excludeCourses,
                 courseAreaCodes,
-                courseHsaTags,
+                courseRequirementTags,
                 courseDepartments,
             ),
-        [courseAreaCodes, courseHsaTags, courseDepartments],
+        [courseAreaCodes, courseRequirementTags, courseDepartments],
     );
 
     const renderCategory = (
@@ -688,8 +933,10 @@ const HsaSnapshotView = memo(function HsaSnapshotView({
                 <div className={Css.hsaGroupGrid}>
                     {HSA_GROUPS.map(({ key, label: groupLabel }) => {
                         const sections = semester.sections.filter((s) => {
-                            const tag = (s.attrs as { hsaTag?: string }).hsaTag;
-                            return key === undefined ? !tag : tag === key;
+                            const tags = s.attrs.requirementTags;
+                            return key === undefined
+                                ? !tags || tags.length === 0
+                                : tags?.includes(key) ?? false;
                         });
                         return (
                             <div key={groupLabel} className={Css.hsaGroup}>
@@ -734,22 +981,29 @@ const HsaSnapshotView = memo(function HsaSnapshotView({
                             </span>
                         </h5>
                         <div className={Css.reqCourseList}>
-                            {sub.matched.map((bk) => (
-                                <div
-                                    key={bk}
-                                    className={classNames(
-                                        Css.reqCourseItem,
-                                        Css.reqCompleted,
-                                    )}
-                                >
-                                    <span className={Css.reqCompletedCheck}>
-                                        &#10003;
-                                    </span>
-                                    <span className={Css.reqCourseCode}>
-                                        {courseDisplayNames.get(bk) ?? bk}
-                                    </span>
-                                </div>
-                            ))}
+                            {sub.matched.map((bk) => {
+                                const isTaken = takenKeys.has(bk);
+                                const isProp = !isTaken && proposedKeys.has(bk);
+                                return (
+                                    <div
+                                        key={bk}
+                                        className={classNames(
+                                            Css.reqCourseItem,
+                                            isTaken && Css.reqCompleted,
+                                            isProp && Css.reqProposed,
+                                        )}
+                                    >
+                                        {(isTaken || isProp) && (
+                                            <span className={isTaken ? Css.reqCompletedCheck : Css.reqProposedCheck}>
+                                                &#10003;
+                                            </span>
+                                        )}
+                                        <span className={Css.reqCourseCode}>
+                                            {courseDisplayNames.get(bk) ?? bk}
+                                        </span>
+                                    </div>
+                                );
+                            })}
                             {Array.from(
                                 {
                                     length: Math.max(

@@ -6,70 +6,21 @@ import { createLogger } from "../../logger";
 
 const logger = createLogger("db.shared-snapshot");
 
-export async function upsertSnapshot(
+export async function createSnapshot(
     snapshot: Omit<APIv4.SharedBlockSnapshot, "_id">,
-    existingSnapshotId?: APIv4.SharedBlockSnapshotId,
 ): Promise<APIv4.SharedBlockSnapshotId> {
-    if (staticMode) {
-        // Check if there's an existing snapshot for same student+block+advisor
-        let snapshotId = existingSnapshotId;
-        if (!snapshotId) {
-            for (const [id, snap] of staticSnapshots) {
-                if (
-                    snap.studentUserId === snapshot.studentUserId &&
-                    snap.blockId === snapshot.blockId &&
-                    snap.advisorEmail === snapshot.advisorEmail
-                ) {
-                    snapshotId = id as APIv4.SharedBlockSnapshotId;
-                    break;
-                }
-            }
-        }
-
-        if (!snapshotId) {
-            snapshotId = uuid4("snap") as APIv4.SharedBlockSnapshotId;
-        }
-
-        const fullSnapshot: APIv4.SharedBlockSnapshot = {
-            ...snapshot,
-            _id: snapshotId,
-        };
-        staticSnapshots.set(snapshotId, fullSnapshot);
-        logger.info(`Upserted static snapshot ${snapshotId}`);
-        return snapshotId;
-    }
-
-    // MongoDB: upsert by student+block+advisor compound key
-    const filter = {
-        studentUserId: snapshot.studentUserId,
-        blockId: snapshot.blockId,
-        advisorEmail: snapshot.advisorEmail,
-    };
-
-    const existing = await collections.sharedBlockSnapshots.findOne(filter);
-
-    if (existing) {
-        await collections.sharedBlockSnapshots.updateOne(filter, {
-            $set: {
-                studentEppn: snapshot.studentEppn,
-                studentSchool: snapshot.studentSchool,
-                blockName: snapshot.blockName,
-                college: snapshot.college,
-                major: snapshot.major,
-                semesters: snapshot.semesters,
-                sharedAt: snapshot.sharedAt,
-                // Keep existing approvals — advisor will re-review
-            },
-        });
-        logger.info(`Updated existing snapshot ${existing._id}`);
-        return existing._id;
-    }
-
     const snapshotId = uuid4("snap") as APIv4.SharedBlockSnapshotId;
     const fullSnapshot: APIv4.SharedBlockSnapshot = {
         ...snapshot,
         _id: snapshotId,
     };
+
+    if (staticMode) {
+        staticSnapshots.set(snapshotId, fullSnapshot);
+        logger.info(`Created static snapshot ${snapshotId}`);
+        return snapshotId;
+    }
+
     await collections.sharedBlockSnapshots.insertOne(fullSnapshot);
     logger.info(`Created new snapshot ${snapshotId}`);
     return snapshotId;
@@ -91,6 +42,52 @@ export async function getSnapshotsForAdvisor(
     return collections.sharedBlockSnapshots
         .find({ advisorEmail })
         .toArray();
+}
+
+export async function getSnapshotsForStudent(
+    studentUserId: string,
+): Promise<APIv4.SharedBlockSnapshot[]> {
+    if (staticMode) {
+        const results: APIv4.SharedBlockSnapshot[] = [];
+        for (const snap of staticSnapshots.values()) {
+            if (snap.studentUserId === studentUserId) {
+                results.push(snap);
+            }
+        }
+        results.sort(
+            (a, b) =>
+                new Date(b.sharedAt).getTime() -
+                new Date(a.sharedAt).getTime(),
+        );
+        return results;
+    }
+
+    return collections.sharedBlockSnapshots
+        .find({ studentUserId })
+        .sort({ sharedAt: -1 })
+        .toArray();
+}
+
+export async function deleteSnapshot(
+    snapshotId: APIv4.SharedBlockSnapshotId,
+    requestingUserId: string,
+): Promise<boolean> {
+    if (staticMode) {
+        const snap = staticSnapshots.get(snapshotId);
+        if (!snap) return false;
+        if (snap.studentUserId !== requestingUserId) return false;
+        staticSnapshots.delete(snapshotId);
+        logger.info(`Deleted static snapshot ${snapshotId}`);
+        return true;
+    }
+
+    const result = await collections.sharedBlockSnapshots.deleteOne({
+        _id: snapshotId,
+        studentUserId: requestingUserId,
+    });
+    if (result.deletedCount === 0) return false;
+    logger.info(`Deleted snapshot ${snapshotId}`);
+    return true;
 }
 
 export async function getSnapshot(

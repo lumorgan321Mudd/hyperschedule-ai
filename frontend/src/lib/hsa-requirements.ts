@@ -9,7 +9,7 @@ export interface SubCategory {
     autoDetect?: { areaCode: string };
     tagValue?: string;
     description?: string;
-    countMode?: "distinctDepartments";
+    countMode?: "distinctDepartments" | "largestDepartmentCluster";
 }
 
 export interface SubCategoryResult {
@@ -40,7 +40,7 @@ export function computeHsaSubCategories(
     areaCodeMatch: string[],
     excludeCourses: string[],
     courseAreaCodes: Map<string, string[]>,
-    courseHsaTags: Map<string, string>,
+    courseRequirementTags: Map<string, string[]>,
     courseDepartments: Map<string, string>,
 ): SubCategoryResult[] {
     const excludeKeys = new Set(excludeCourses.map((c) => courseBaseKey(c)));
@@ -58,22 +58,17 @@ export function computeHsaSubCategories(
         }
 
         if (sub.tagValue) {
-            for (const [baseKey, tag] of courseHsaTags) {
+            for (const [baseKey, tags] of courseRequirementTags) {
                 if (excludeKeys.has(baseKey)) continue;
-                const areas = courseAreaCodes.get(baseKey);
-                if (
-                    !areas ||
-                    !areas.some((a) => areaCodeMatch.includes(a))
-                )
-                    continue;
-                if (tag === sub.tagValue) {
+                if (matched.includes(baseKey)) continue;
+                if (tags.includes(sub.tagValue!)) {
                     matched.push(baseKey);
                 }
             }
         }
 
         let completed: number;
-        if (sub.tagValue === "concentration") {
+        if (sub.countMode === "largestDepartmentCluster") {
             const deptCounts = new Map<string, number>();
             for (const baseKey of matched) {
                 const dept = courseDepartments.get(baseKey);
@@ -123,14 +118,15 @@ export const HSA_CONFIG = {
         {
             name: "Concentration",
             coursesRequired: 4,
-            tagValue: "concentration",
+            tagValue: "hsa-concentration",
+            countMode: "largestDepartmentCluster" as const,
             description:
                 "4+ courses in a single department (largest cluster counts)",
         },
         {
             name: "Distribution",
             coursesRequired: 5,
-            tagValue: "distribution",
+            tagValue: "hsa-distribution",
             countMode: "distinctDepartments" as const,
             description: "Courses from 5+ distinct departments",
         },

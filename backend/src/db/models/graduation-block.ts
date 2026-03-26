@@ -166,7 +166,6 @@ export async function addSemester(
                     [`graduationBlocks.${blockId}.semesters.${semesterId}`]:
                         semester,
                     [`graduationBlocks.${blockId}.updatedAt`]: now,
-                    [`graduationBlocks.${blockId}.dirtyAfterShare`]: true,
                 },
             } as UpdateFilter<APIv4.ServerUser>,
         );
@@ -194,8 +193,6 @@ export async function updateSemesterSections(
         if (!sem) throw Error("Semester not found");
         sem.sections = sections;
         block.updatedAt = now;
-        if (block.shares && block.shares.length > 0)
-            block.dirtyAfterShare = true;
         logger.info(
             `Updated sections in semester ${semesterId} of static block ${blockId}`,
         );
@@ -212,7 +209,6 @@ export async function updateSemesterSections(
                     [`graduationBlocks.${blockId}.semesters.${semesterId}.sections`]:
                         sections,
                     [`graduationBlocks.${blockId}.updatedAt`]: now,
-                    [`graduationBlocks.${blockId}.dirtyAfterShare`]: true,
                 },
             } as UpdateFilter<APIv4.ServerUser>,
         );
@@ -258,7 +254,6 @@ export async function deleteSemester(
                 },
                 $set: {
                     [`graduationBlocks.${blockId}.updatedAt`]: now,
-                    [`graduationBlocks.${blockId}.dirtyAfterShare`]: true,
                 },
             } as UpdateFilter<APIv4.ServerUser>,
         );
@@ -287,7 +282,6 @@ export async function setShareInfo(
         );
         if (idx >= 0) block.shares[idx] = shareInfo;
         else block.shares.push(shareInfo);
-        block.dirtyAfterShare = false;
         block.updatedAt = new Date().toISOString();
     } else {
         // First remove any existing share to this advisor, then add the new one
@@ -314,7 +308,6 @@ export async function setShareInfo(
                     [`graduationBlocks.${blockId}.shares`]: shareInfo,
                 },
                 $set: {
-                    [`graduationBlocks.${blockId}.dirtyAfterShare`]: false,
                     [`graduationBlocks.${blockId}.updatedAt`]:
                         new Date().toISOString(),
                 },
@@ -326,56 +319,3 @@ export async function setShareInfo(
     );
 }
 
-export async function updateShareApproval(
-    studentUserId: string,
-    blockId: APIv4.GraduationBlockId,
-    advisorEmail: string,
-    approval: {
-        approvalStatus: "approved" | "rejected";
-        approvalComment: string;
-        approvalAdvisorName: string;
-        approvalTimestamp: string;
-    },
-): Promise<void> {
-    if (staticMode) {
-        const user = getStaticUser(studentUserId);
-        const blocks = ensureBlocks(user);
-        const block = blocks[blockId];
-        if (!block || !block.shares) return;
-        const share = block.shares.find(
-            (s) => s.advisorEmail === advisorEmail,
-        );
-        if (share) {
-            share.approvalStatus = approval.approvalStatus;
-            share.approvalComment = approval.approvalComment;
-            share.approvalAdvisorName = approval.approvalAdvisorName;
-            share.approvalTimestamp = approval.approvalTimestamp;
-        }
-    } else {
-        // Find the share entry in the array and update its approval fields
-        const user = await collections.users.findOne({ _id: studentUserId });
-        if (!user?.graduationBlocks?.[blockId]?.shares) return;
-        const shareIdx = user.graduationBlocks[blockId]!.shares!.findIndex(
-            (s) => s.advisorEmail === advisorEmail,
-        );
-        if (shareIdx < 0) return;
-        await collections.users.updateOne(
-            { _id: studentUserId },
-            {
-                $set: {
-                    [`graduationBlocks.${blockId}.shares.${shareIdx}.approvalStatus`]:
-                        approval.approvalStatus,
-                    [`graduationBlocks.${blockId}.shares.${shareIdx}.approvalComment`]:
-                        approval.approvalComment,
-                    [`graduationBlocks.${blockId}.shares.${shareIdx}.approvalAdvisorName`]:
-                        approval.approvalAdvisorName,
-                    [`graduationBlocks.${blockId}.shares.${shareIdx}.approvalTimestamp`]:
-                        approval.approvalTimestamp,
-                },
-            } as any,
-        );
-    }
-    logger.info(
-        `Updated share approval for block ${blockId} (${advisorEmail}): ${approval.approvalStatus}`,
-    );
-}

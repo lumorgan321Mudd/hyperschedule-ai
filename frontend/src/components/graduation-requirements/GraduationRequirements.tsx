@@ -4,10 +4,12 @@ import AppCss from "@components/App.module.css";
 import { useUserStore } from "@hooks/store/user";
 import { useActiveSectionsLookup } from "@hooks/section";
 import { useSectionsForTermsQuery } from "@hooks/api/query";
-import { fetchWithToast } from "@lib/api";
+import { fetchWithToast, schoolCodeFromEnum } from "@lib/api";
 import * as APIv4 from "hyperschedule-shared/api/v4";
+import { termIsBefore } from "hyperschedule-shared/api/v4";
+import { CURRENT_TERM } from "hyperschedule-shared/api/current-term";
 import classNames from "classnames";
-import { courseBaseKey } from "@lib/hsa-requirements";
+import { courseBaseKey, type SubCategory } from "@lib/hsa-requirements";
 
 interface SchoolOption {
     code: string;
@@ -15,23 +17,14 @@ interface SchoolOption {
     hasMajorData: boolean;
 }
 
-interface RequirementCourse {
+export interface RequirementCourse {
     course: string;
     title?: string;
     credits: number;
     alternatives?: string[];
 }
 
-interface SubCategory {
-    name: string;
-    coursesRequired: number;
-    autoDetect?: { areaCode: string };
-    tagValue?: string;
-    description?: string;
-    countMode?: "distinctDepartments";
-}
-
-interface RequirementGroup {
+export interface RequirementGroup {
     name: string;
     description?: string;
     courses: RequirementCourse[];
@@ -42,7 +35,7 @@ interface RequirementGroup {
     subCategories?: SubCategory[];
 }
 
-interface MajorInfo {
+export interface MajorInfo {
     name: string;
     department?: string;
     departments?: string[];
@@ -51,13 +44,14 @@ interface MajorInfo {
         electives?: {
             description: string;
             coursesRequired?: number;
+            tagValue?: string;
             level?: string;
             courses?: RequirementCourse[];
         };
     };
 }
 
-interface SchoolData {
+export interface SchoolData {
     school: string;
     school_code: string;
     catalog_year: string;
@@ -66,7 +60,7 @@ interface SchoolData {
     majors: Record<string, MajorInfo>;
 }
 
-function isCourseCompleted(
+export function isCourseCompleted(
     course: RequirementCourse,
     completedCourses: Set<string>,
 ): boolean {
@@ -79,21 +73,17 @@ function isCourseCompleted(
     return false;
 }
 
-function schoolCodeFromEnum(school: APIv4.School): string {
-    switch (school) {
-        case APIv4.School.HMC:
-            return "hmc";
-        case APIv4.School.POM:
-            return "pomona";
-        case APIv4.School.SCR:
-            return "scripps";
-        case APIv4.School.CMC:
-            return "cmc";
-        case APIv4.School.PTZ:
-            return "pitzer";
-        default:
-            return "hmc";
+export function isCourseProposed(
+    course: RequirementCourse,
+    proposedCourses: Set<string>,
+): boolean {
+    if (proposedCourses.has(courseBaseKey(course.course))) return true;
+    if (course.alternatives) {
+        return course.alternatives.some((alt) =>
+            proposedCourses.has(courseBaseKey(alt)),
+        );
     }
+    return false;
 }
 
 export default memo(function GraduationRequirements() {
@@ -179,7 +169,8 @@ export default memo(function GraduationRequirements() {
                     const data: SchoolData = await response.json();
                     setSchoolData(data);
                     const majorKeys = Object.keys(data.majors);
-                    if (majorKeys.length > 0) setSelectedMajor(majorKeys[0]!);
+                    if (majorKeys.includes("engineering")) setSelectedMajor("engineering");
+                    else if (majorKeys.length > 0) setSelectedMajor(majorKeys[0]!);
                     else setSelectedMajor("");
                 } else {
                     setSchoolData(null);
@@ -198,22 +189,30 @@ export default memo(function GraduationRequirements() {
 
     // Get courses from selected block or schedule for requirement checking
     const completedCourses = new Set<string>();
+    const proposedCourses = new Set<string>();
     const courseAreaCodes = new Map<string, string[]>();
     const courseDisplayNames = new Map<string, string>();
-    const courseHsaTags = new Map<string, string>();
+    const courseRequirementTags = new Map<string, string[]>();
     const courseDepartments = new Map<string, string>();
+    /** Reverse map: tag value → base keys of courses that have this tag */
+    const tagSatisfiedBy = new Map<string, string>();
 
     const addSectionInfo = (s: {
         section: APIv4.SectionIdentifier;
-        attrs: { hsaTag?: string };
-    }) => {
+        attrs: { requirementTags?: string[] };
+    }, targetSet: Set<string>) => {
         const code = APIv4.stringifyCourseCode(s.section);
         const baseKey = courseBaseKey(code);
-        completedCourses.add(baseKey);
+        targetSet.add(baseKey);
         courseDisplayNames.set(baseKey, code.trim());
         courseDepartments.set(baseKey, s.section.department);
-        if (s.attrs.hsaTag) {
-            courseHsaTags.set(baseKey, s.attrs.hsaTag);
+        const tags = s.attrs.requirementTags;
+        if (tags && tags.length > 0) {
+            courseRequirementTags.set(baseKey, tags);
+            for (const tag of tags) {
+                targetSet.add(courseBaseKey(tag));
+                tagSatisfiedBy.set(courseBaseKey(tag), code.trim());
+            }
         }
         const longKey = APIv4.stringifySectionCodeLong(s.section);
         const fullSection = sectionsLookup.get(longKey);
@@ -226,15 +225,24 @@ export default memo(function GraduationRequirements() {
         const blockId = checkAgainst.slice(6);
         const block = graduationBlocks[blockId];
         if (block) {
+            const isHsa = block.planType === "hsa";
             for (const sem of Object.values(block.semesters)) {
-                for (const s of sem.sections) addSectionInfo(s);
+                if (isHsa && sem.name === "Alternatives") continue;
+                const isTaken = isHsa
+                    ? sem.name === "Taken"
+                    : termIsBefore(sem.term, CURRENT_TERM);
+                const targetSet = isTaken ? completedCourses : proposedCourses;
+                for (const s of sem.sections) addSectionInfo(s, targetSet);
             }
         }
     } else if (checkAgainst.startsWith("schedule:")) {
         const scheduleId = checkAgainst.slice(9);
         const schedule = schedules[scheduleId];
         if (schedule) {
-            for (const s of schedule.sections) addSectionInfo(s);
+            // Schedules are current term — treat as proposed
+            const isPast = termIsBefore(schedule.term, CURRENT_TERM);
+            const targetSet = isPast ? completedCourses : proposedCourses;
+            for (const s of schedule.sections) addSectionInfo(s, targetSet);
         }
     }
 
@@ -333,10 +341,12 @@ export default memo(function GraduationRequirements() {
                                             key={i}
                                             group={group}
                                             completedCourses={completedCourses}
+                                            proposedCourses={proposedCourses}
                                             courseAreaCodes={courseAreaCodes}
                                             courseDisplayNames={courseDisplayNames}
-                                            courseHsaTags={courseHsaTags}
+                                            courseRequirementTags={courseRequirementTags}
                                             courseDepartments={courseDepartments}
+                                            tagSatisfiedBy={tagSatisfiedBy}
                                         />
                                     ),
                                 )}
@@ -355,6 +365,8 @@ export default memo(function GraduationRequirements() {
                                 <MajorRequiredView
                                     courses={selectedMajorData.major_courses.required}
                                     completedCourses={completedCourses}
+                                    proposedCourses={proposedCourses}
+                                    tagSatisfiedBy={tagSatisfiedBy}
                                 />
                             )}
 
@@ -362,6 +374,9 @@ export default memo(function GraduationRequirements() {
                                 <ElectivesView
                                     electives={selectedMajorData.major_courses.electives}
                                     completedCourses={completedCourses}
+                                    proposedCourses={proposedCourses}
+                                    courseRequirementTags={courseRequirementTags}
+                                    courseDisplayNames={courseDisplayNames}
                                 />
                             )}
 
@@ -384,20 +399,24 @@ export default memo(function GraduationRequirements() {
     );
 });
 
-const RequirementGroupView = memo(function RequirementGroupView({
+export const RequirementGroupView = memo(function RequirementGroupView({
     group,
     completedCourses,
+    proposedCourses,
     courseAreaCodes,
     courseDisplayNames,
-    courseHsaTags,
+    courseRequirementTags,
     courseDepartments,
+    tagSatisfiedBy,
 }: {
     group: RequirementGroup;
     completedCourses: Set<string>;
+    proposedCourses?: Set<string>;
     courseAreaCodes: Map<string, string[]>;
     courseDisplayNames: Map<string, string>;
-    courseHsaTags: Map<string, string>;
+    courseRequirementTags: Map<string, string[]>;
     courseDepartments: Map<string, string>;
+    tagSatisfiedBy?: Map<string, string>;
 }) {
     // For area-code-based groups (HSA, PE): count courses matching area codes
     const excludeKeys = new Set(
@@ -427,22 +446,17 @@ const RequirementGroupView = memo(function RequirementGroupView({
         }
 
         if (sub.tagValue) {
-            for (const [baseKey, tag] of courseHsaTags) {
+            for (const [baseKey, tags] of courseRequirementTags) {
                 if (excludeKeys.has(baseKey)) continue;
-                const areas = courseAreaCodes.get(baseKey);
-                if (
-                    !areas ||
-                    !areas.some((a) => group.areaCodeMatch!.includes(a))
-                )
-                    continue;
-                if (tag === sub.tagValue) {
+                if (matched.includes(baseKey)) continue;
+                if (tags.includes(sub.tagValue!)) {
                     matched.push(baseKey);
                 }
             }
         }
 
         let completed: number;
-        if (sub.tagValue === "concentration") {
+        if (sub.countMode === "largestDepartmentCluster") {
             // Count largest single-department cluster
             const deptCounts = new Map<string, number>();
             for (const baseKey of matched) {
@@ -475,13 +489,20 @@ const RequirementGroupView = memo(function RequirementGroupView({
     const isAreaBased =
         group.areaCodeMatch !== undefined && group.areaCodeMatch.length > 0;
     const completed = isAreaBased
-        ? areaMatched.length
+        ? areaMatched.filter((k) => !proposedCourses || !proposedCourses.has(k) || completedCourses.has(k)).length
         : group.courses.filter((c) => isCourseCompleted(c, completedCourses))
               .length;
+    const proposed = proposedCourses
+        ? isAreaBased
+            ? areaMatched.filter((k) => proposedCourses.has(k) && !completedCourses.has(k)).length
+            : group.courses.filter((c) => !isCourseCompleted(c, completedCourses) && isCourseProposed(c, proposedCourses)).length
+        : 0;
     const total = group.coursesRequired ?? group.courses.length;
-    const percent =
+    const completedPercent =
         total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
-    const hasCheck = completedCourses.size > 0;
+    const proposedPercent =
+        total > 0 ? Math.min(100 - completedPercent, Math.round((proposed / total) * 100)) : 0;
+    const hasCheck = completedCourses.size > 0 || (proposedCourses?.size ?? 0) > 0;
 
     return (
         <div className={Css.requirementGroup}>
@@ -489,17 +510,21 @@ const RequirementGroupView = memo(function RequirementGroupView({
                 <h4>{group.name}</h4>
                 {total > 0 && hasCheck && (
                     <span className={Css.progressBadge}>
-                        {completed}/{total}
+                        {completed + proposed}/{total}
                     </span>
                 )}
             </div>
             {total > 0 && hasCheck && (
                 <div className={Css.progressBarContainer}>
+                    {proposedPercent > 0 && (
+                        <div
+                            className={Css.progressBarProposed}
+                            style={{ width: `${completedPercent + proposedPercent}%` }}
+                        />
+                    )}
                     <div
-                        className={classNames(Css.progressBarFill, {
-                            [Css.progressComplete]: percent === 100,
-                        })}
-                        style={{ width: `${percent}%` }}
+                        className={Css.progressBarFill}
+                        style={{ width: `${completedPercent}%` }}
                     />
                 </div>
             )}
@@ -530,26 +555,28 @@ const RequirementGroupView = memo(function RequirementGroupView({
                                 </span>
                             )}
                             <div className={Css.courseList}>
-                                {sub.matched.map((baseKey) => (
-                                    <div
-                                        key={baseKey}
-                                        className={classNames(
-                                            Css.courseItem,
-                                            Css.completed,
-                                        )}
-                                    >
-                                        <span
-                                            className={Css.completedCheck}
+                                {sub.matched.map((baseKey) => {
+                                    const isTaken = completedCourses.has(baseKey);
+                                    const isProp = !isTaken && !!proposedCourses?.has(baseKey);
+                                    return (
+                                        <div
+                                            key={baseKey}
+                                            className={classNames(
+                                                Css.courseItem,
+                                                isTaken && Css.completed,
+                                                isProp && Css.proposed,
+                                            )}
                                         >
-                                            &#10003;
-                                        </span>
-                                        <span className={Css.courseCode}>
-                                            {courseDisplayNames.get(
-                                                baseKey,
-                                            ) ?? baseKey}
-                                        </span>
-                                    </div>
-                                ))}
+                                            {isTaken && <span className={Css.completedCheck}>&#10003;</span>}
+                                            {isProp && <span className={Css.proposedCheck}>&#10003;</span>}
+                                            <span className={Css.courseCode}>
+                                                {courseDisplayNames.get(
+                                                    baseKey,
+                                                ) ?? baseKey}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
                                 {Array.from(
                                     { length: Math.max(0, sub.required - sub.completed) },
                                     (_, j) => (
@@ -579,6 +606,8 @@ const RequirementGroupView = memo(function RequirementGroupView({
                                 course,
                                 completedCourses,
                             )}
+                            proposed={proposedCourses ? isCourseProposed(course, proposedCourses) : false}
+                            tagSatisfiedBy={tagSatisfiedBy}
                         />
                     ))}
                 </div>
@@ -586,22 +615,26 @@ const RequirementGroupView = memo(function RequirementGroupView({
             {/* Dynamic area-code-matched courses (HSA, PE) — only for groups without sub-categories */}
             {isAreaBased && !subCategoryResults && (
                 <div className={Css.courseList}>
-                    {areaMatched.map((baseKey) => (
-                        <div
-                            key={baseKey}
-                            className={classNames(
-                                Css.courseItem,
-                                Css.completed,
-                            )}
-                        >
-                            <span className={Css.completedCheck}>
-                                &#10003;
-                            </span>
-                            <span className={Css.courseCode}>
-                                {courseDisplayNames.get(baseKey) ?? baseKey}
-                            </span>
-                        </div>
-                    ))}
+                    {areaMatched.map((baseKey) => {
+                        const isTaken = completedCourses.has(baseKey);
+                        const isProp = !isTaken && !!proposedCourses?.has(baseKey);
+                        return (
+                            <div
+                                key={baseKey}
+                                className={classNames(
+                                    Css.courseItem,
+                                    isTaken && Css.completed,
+                                    isProp && Css.proposed,
+                                )}
+                            >
+                                {isTaken && <span className={Css.completedCheck}>&#10003;</span>}
+                                {isProp && <span className={Css.proposedCheck}>&#10003;</span>}
+                                <span className={Css.courseCode}>
+                                    {courseDisplayNames.get(baseKey) ?? baseKey}
+                                </span>
+                            </div>
+                        );
+                    })}
                     {Array.from(
                         { length: Math.max(0, total - areaMatched.length) },
                         (_, j) => (
@@ -621,19 +654,27 @@ const RequirementGroupView = memo(function RequirementGroupView({
     );
 });
 
-const MajorRequiredView = memo(function MajorRequiredView({
+export const MajorRequiredView = memo(function MajorRequiredView({
     courses,
     completedCourses,
+    proposedCourses,
+    tagSatisfiedBy,
 }: {
     courses: RequirementCourse[];
     completedCourses: Set<string>;
+    proposedCourses?: Set<string>;
+    tagSatisfiedBy?: Map<string, string>;
 }) {
     const completed = courses.filter((c) =>
         isCourseCompleted(c, completedCourses),
     ).length;
+    const proposed = proposedCourses
+        ? courses.filter((c) => !isCourseCompleted(c, completedCourses) && isCourseProposed(c, proposedCourses)).length
+        : 0;
     const total = courses.length;
-    const percent = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
-    const hasCheck = completedCourses.size > 0;
+    const completedPercent = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
+    const proposedPercent = total > 0 ? Math.min(100 - completedPercent, Math.round((proposed / total) * 100)) : 0;
+    const hasCheck = completedCourses.size > 0 || (proposedCourses?.size ?? 0) > 0;
 
     return (
         <div className={Css.requirementGroup}>
@@ -641,17 +682,21 @@ const MajorRequiredView = memo(function MajorRequiredView({
                 <h4>Required Courses</h4>
                 {total > 0 && hasCheck && (
                     <span className={Css.progressBadge}>
-                        {completed}/{total}
+                        {completed + proposed}/{total}
                     </span>
                 )}
             </div>
             {total > 0 && hasCheck && (
                 <div className={Css.progressBarContainer}>
+                    {proposedPercent > 0 && (
+                        <div
+                            className={Css.progressBarProposed}
+                            style={{ width: `${completedPercent + proposedPercent}%` }}
+                        />
+                    )}
                     <div
-                        className={classNames(Css.progressBarFill, {
-                            [Css.progressComplete]: percent === 100,
-                        })}
-                        style={{ width: `${percent}%` }}
+                        className={Css.progressBarFill}
+                        style={{ width: `${completedPercent}%` }}
                     />
                 </div>
             )}
@@ -661,6 +706,8 @@ const MajorRequiredView = memo(function MajorRequiredView({
                         key={i}
                         course={course}
                         completed={isCourseCompleted(course, completedCourses)}
+                        proposed={proposedCourses ? isCourseProposed(course, proposedCourses) : false}
+                        tagSatisfiedBy={tagSatisfiedBy}
                     />
                 ))}
             </div>
@@ -668,24 +715,55 @@ const MajorRequiredView = memo(function MajorRequiredView({
     );
 });
 
-const ElectivesView = memo(function ElectivesView({
+export const ElectivesView = memo(function ElectivesView({
     electives,
     completedCourses,
+    proposedCourses,
+    courseRequirementTags,
+    courseDisplayNames,
 }: {
     electives: {
         description: string;
         coursesRequired?: number;
+        tagValue?: string;
         courses?: RequirementCourse[];
     };
     completedCourses: Set<string>;
+    proposedCourses?: Set<string>;
+    courseRequirementTags?: Map<string, string[]>;
+    courseDisplayNames?: Map<string, string>;
 }) {
-    const courses = electives.courses ?? [];
-    const completed = courses.filter((c) =>
-        isCourseCompleted(c, completedCourses),
-    ).length;
-    const total = electives.coursesRequired ?? courses.length;
-    const percent = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
-    const hasCheck = completedCourses.size > 0;
+    const total = electives.coursesRequired ?? (electives.courses ?? []).length;
+    const hasCheck = completedCourses.size > 0 || (proposedCourses?.size ?? 0) > 0;
+
+    // Tag-based elective counting
+    const taggedCompleted: string[] = [];
+    const taggedProposed: string[] = [];
+    if (electives.tagValue && courseRequirementTags) {
+        for (const [baseKey, tags] of courseRequirementTags) {
+            if (tags.includes(electives.tagValue!)) {
+                if (completedCourses.has(baseKey)) {
+                    taggedCompleted.push(baseKey);
+                } else if (proposedCourses?.has(baseKey)) {
+                    taggedProposed.push(baseKey);
+                } else {
+                    taggedCompleted.push(baseKey);
+                }
+            }
+        }
+    }
+
+    const useTagMode = !!electives.tagValue;
+    const completed = useTagMode
+        ? taggedCompleted.length
+        : (electives.courses ?? []).filter((c) => isCourseCompleted(c, completedCourses)).length;
+    const proposed = useTagMode
+        ? taggedProposed.length
+        : proposedCourses
+            ? (electives.courses ?? []).filter((c) => !isCourseCompleted(c, completedCourses) && isCourseProposed(c, proposedCourses)).length
+            : 0;
+    const completedPercent = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
+    const proposedPercent = total > 0 ? Math.min(100 - completedPercent, Math.round((proposed / total) * 100)) : 0;
 
     return (
         <div className={Css.requirementGroup}>
@@ -693,28 +771,70 @@ const ElectivesView = memo(function ElectivesView({
                 <h4>Electives</h4>
                 {total > 0 && hasCheck && (
                     <span className={Css.progressBadge}>
-                        {completed}/{total}
+                        {completed + proposed}/{total}
                     </span>
                 )}
             </div>
             {total > 0 && hasCheck && (
                 <div className={Css.progressBarContainer}>
+                    {proposedPercent > 0 && (
+                        <div
+                            className={Css.progressBarProposed}
+                            style={{ width: `${completedPercent + proposedPercent}%` }}
+                        />
+                    )}
                     <div
-                        className={classNames(Css.progressBarFill, {
-                            [Css.progressComplete]: percent === 100,
-                        })}
-                        style={{ width: `${percent}%` }}
+                        className={Css.progressBarFill}
+                        style={{ width: `${completedPercent}%` }}
                     />
                 </div>
             )}
             <p className={Css.description}>{electives.description}</p>
-            {courses.length > 0 && (
+            {useTagMode && hasCheck && (
                 <div className={Css.courseList}>
-                    {courses.map((course, i) => (
+                    {taggedCompleted.map((baseKey) => (
+                        <div
+                            key={baseKey}
+                            className={classNames(Css.courseItem, Css.completed)}
+                        >
+                            <span className={Css.completedCheck}>&#10003;</span>
+                            <span className={Css.courseCode}>
+                                {courseDisplayNames?.get(baseKey) ?? baseKey}
+                            </span>
+                        </div>
+                    ))}
+                    {taggedProposed.map((baseKey) => (
+                        <div
+                            key={baseKey}
+                            className={classNames(Css.courseItem, Css.proposed)}
+                        >
+                            <span className={Css.proposedCheck}>&#10003;</span>
+                            <span className={Css.courseCode}>
+                                {courseDisplayNames?.get(baseKey) ?? baseKey}
+                            </span>
+                        </div>
+                    ))}
+                    {Array.from(
+                        { length: Math.max(0, total - taggedCompleted.length - taggedProposed.length) },
+                        (_, j) => (
+                            <div key={`empty-${j}`} className={Css.courseItem}>
+                                <span className={Css.courseCode}>
+                                    Elective (tag in plan)
+                                </span>
+                            </div>
+                        ),
+                    )}
+                </div>
+            )}
+            {/* Non-tag mode: show course list for matching */}
+            {!useTagMode && (electives.courses ?? []).length > 0 && (
+                <div className={Css.courseList}>
+                    {(electives.courses ?? []).map((course, i) => (
                         <CourseItem
                             key={i}
                             course={course}
                             completed={isCourseCompleted(course, completedCourses)}
+                            proposed={proposedCourses ? isCourseProposed(course, proposedCourses) : false}
                         />
                     ))}
                 </div>
@@ -726,17 +846,36 @@ const ElectivesView = memo(function ElectivesView({
 const CourseItem = memo(function CourseItem({
     course,
     completed,
+    proposed,
+    tagSatisfiedBy,
 }: {
     course: RequirementCourse;
     completed: boolean;
+    proposed?: boolean;
+    tagSatisfiedBy?: Map<string, string>;
 }) {
+    // Check if this requirement is satisfied via a tag from a DIFFERENT course
+    const viaNote = useMemo(() => {
+        if (!completed || !tagSatisfiedBy) return undefined;
+        const satisfier = tagSatisfiedBy.get(courseBaseKey(course.course));
+        if (!satisfier) return undefined;
+        // Don't show "via" if the satisfying course is the same as the requirement
+        if (courseBaseKey(satisfier) === courseBaseKey(course.course))
+            return undefined;
+        return satisfier;
+    }, [completed, tagSatisfiedBy, course.course]);
+
+    const showProposed = !!proposed && !completed;
+
     return (
         <div
             className={classNames(Css.courseItem, {
                 [Css.completed]: completed,
+                [Css.proposed]: showProposed,
             })}
         >
             {completed && <span className={Css.completedCheck}>&#10003;</span>}
+            {showProposed && <span className={Css.proposedCheck}>&#10003;</span>}
             <span className={Css.courseCode}>
                 {course.course}
                 {course.alternatives && (
@@ -748,6 +887,11 @@ const CourseItem = memo(function CourseItem({
             </span>
             {course.title && (
                 <span className={Css.courseTitle}>{course.title}</span>
+            )}
+            {viaNote && (
+                <span className={Css.viaBadge} title={`Satisfied by ${viaNote}`}>
+                    via {viaNote}
+                </span>
             )}
             <span className={Css.courseCredits}>
                 {course.credits} credit{course.credits !== 1 ? "s" : ""}

@@ -329,10 +329,22 @@
         background-color: var(--select);
         border-left-color: var(--palette-green, #22c55e);
     }
+
+    &.reqProposed {
+        background-color: color-mix(in srgb, var(--palette-yellow, #facc15) 50%, var(--bg-1));
+        border-left-color: var(--palette-yellow, #facc15);
+    }
 }
 
 .reqCompletedCheck {
     color: var(--palette-green, #22c55e);
+    font-weight: bold;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.reqProposedCheck {
+    color: var(--palette-yellow, #facc15);
     font-weight: bold;
     font-size: 0.85rem;
     flex-shrink: 0;
@@ -354,6 +366,49 @@
     color: var(--fg-2);
     font-size: 0.75rem;
     white-space: nowrap;
+}
+
+/* Sub-category styles (HSA concentration/distribution/etc.) */
+
+.reqSubCategoryList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+    padding-left: 0.75rem;
+    border-left: 2px solid var(--bg-2);
+}
+
+.reqSubCategory {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.reqSubCategoryHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.reqSubCategoryName {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--fg-1);
+}
+
+.reqSubCategoryProgress {
+    font-size: 0.7rem;
+    padding: 0.0625rem 0.375rem;
+    background-color: var(--bg-2);
+    color: var(--fg-1);
+    border-radius: 1rem;
+    font-weight: 600;
+}
+
+.reqSubCategoryDesc {
+    font-size: 0.75rem;
+    color: var(--fg-2);
 }
 
 .approvalForm {
