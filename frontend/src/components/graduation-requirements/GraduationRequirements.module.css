@@ -47,6 +47,17 @@
     gap: 1.5rem;
 }
 
+.disclaimer {
+    font-size: 0.8rem;
+    color: var(--fg-1);
+    background-color: color-mix(in srgb, var(--palette-yellow, #facc15) 12%, var(--bg-0));
+    border-left: 3px solid var(--palette-yellow, #facc15);
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.25rem;
+    margin-bottom: 0.75rem;
+    line-height: 1.4;
+}
+
 .catalogInfo {
     font-size: 0.8rem;
     color: var(--fg-2);
@@ -254,4 +265,122 @@
     padding: 2rem;
     text-align: center;
     font-style: italic;
+}
+
+/* Override UI */
+
+.overrideBadge {
+    font-size: 0.65rem;
+    padding: 0.125rem 0.375rem;
+    margin-left: 0.5rem;
+    background-color: var(--palette-orange, #f59e0b);
+    color: white;
+    border-radius: 0.25rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+
+.editBtn {
+    font-size: 0.7rem;
+    padding: 0.125rem 0.5rem;
+    margin-left: 0.5rem;
+    background: transparent;
+    border: 1px solid var(--bg-2);
+    border-radius: 0.25rem;
+    color: var(--fg-2);
+    cursor: pointer;
+    flex-shrink: 0;
+
+    &:hover {
+        background-color: var(--bg-2);
+        color: var(--fg-0);
+    }
+}
+
+.overrideEditor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    background-color: var(--bg-0);
+    border: 1px solid var(--palette-orange, #f59e0b);
+    border-radius: 0.25rem;
+}
+
+.overrideLabel {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--fg-1);
+}
+
+.overrideInput {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--bg-2);
+    border-radius: 0.25rem;
+    background-color: var(--bg-1);
+    color: var(--fg-0);
+    font-family: inherit;
+    font-size: 0.8rem;
+    flex: 1;
+    max-width: 200px;
+}
+
+.overrideActions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+
+    & button {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.75rem;
+        border: 1px solid var(--bg-2);
+        border-radius: 0.25rem;
+        background-color: var(--bg-1);
+        color: var(--fg-0);
+        cursor: pointer;
+
+        &:hover {
+            background-color: var(--bg-2);
+        }
+
+        &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        &:first-child {
+            background-color: var(--palette-green, #22c55e);
+            color: white;
+            border-color: transparent;
+        }
+    }
+}
+
+.overrideSummary {
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.75rem;
+    background-color: color-mix(in srgb, var(--palette-orange, #f59e0b) 10%, var(--bg-0));
+    border-left: 3px solid var(--palette-orange, #f59e0b);
+    border-radius: 0.25rem;
+    font-size: 0.8rem;
+}
+
+.overrideSummary h5 {
+    margin: 0 0 0.25rem 0;
+    font-size: 0.8rem;
+    color: var(--palette-orange, #f59e0b);
+}
+
+.overrideSummary p {
+    margin: 0.125rem 0;
+    color: var(--fg-1);
+}
+
+.overrideSummary .overrideNote {
+    font-style: italic;
+    color: var(--fg-2);
 }

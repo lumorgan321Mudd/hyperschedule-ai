@@ -9,6 +9,7 @@ import {
     UserRole,
     GraduationBlockId,
     GraduationBlock,
+    CatalogYear,
 } from "./graduation-block";
 
 export const UserId = z.string().regex(/u~[A-Za-z0-9\-_]{22}/);
@@ -45,6 +46,7 @@ export const ServerUser = z.object({
     _id: UserId,
     eppn: z.string(),
     school: SchoolEnum,
+    classYear: z.number().optional(),
     schedules: z.record(ScheduleId, UserSchedule),
     role: UserRole.optional(),
     graduationBlocks: z

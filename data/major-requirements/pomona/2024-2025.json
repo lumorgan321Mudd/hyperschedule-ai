@@ -1,8 +1,8 @@
 {
     "school": "Pomona College",
     "school_code": "pomona",
-    "catalog_year": "2025-2026",
-    "last_updated": "2026-04-01",
+    "catalog_year": "2024-2025",
+    "last_updated": "2026-04-10 (derived from 2025-2026 catalog)",
     "advising": {
         "model": "single-primary",
         "description": "Each student is assigned one faculty advisor, typically in their intended major department. Students may request a change of advisor at any time. First-year students are assigned a pre-major advisor who also serves as their ID1 seminar instructor."

@@ -10,6 +10,8 @@ import {
     updateSemesterSections,
     deleteSemester,
     setShareInfo,
+    setRequirementOverride,
+    deleteRequirementOverride,
 } from "../../db/models/graduation-block";
 import { createSnapshot, getSnapshotsForStudent, deleteSnapshot } from "../../db/models/shared-snapshot";
 import { getUser } from "../../db/models/user";
@@ -76,6 +78,7 @@ graduationBlocksApp.post(
             input.data.college,
             input.data.major,
             input.data.planType,
+            input.data.catalogYear,
         );
 
         return response
@@ -138,6 +141,7 @@ graduationBlocksApp.patch(
             name: input.data.name,
             college: input.data.college,
             major: input.data.major,
+            catalogYear: input.data.catalogYear,
         });
 
         return response.status(204).end();
@@ -238,6 +242,73 @@ graduationBlocksApp.delete(
     },
 );
 
+// PUT /:blockId/requirement-override — set or update a requirement override
+graduationBlocksApp.put(
+    "/:blockId/requirement-override",
+    async function (request: Request, response: Response) {
+        if (request.userToken === null) return response.status(401).end();
+
+        const blockId = request.params.blockId as APIv4.GraduationBlockId;
+        const input = APIv4.SetRequirementOverrideRequest.safeParse({
+            ...request.body,
+            blockId,
+        });
+        if (!input.success)
+            return response
+                .status(400)
+                .header("Content-Type", "application/json")
+                .send(input.error);
+
+        const overrideId = await setRequirementOverride(
+            request.userToken.uuid,
+            blockId,
+            {
+                requirementGroupName: input.data.requirementGroupName,
+                requirementSection: input.data.requirementSection,
+                ...(input.data.markedSatisfied !== undefined
+                    ? { markedSatisfied: input.data.markedSatisfied }
+                    : {}),
+                ...(input.data.coursesRequiredOverride !== undefined
+                    ? {
+                          coursesRequiredOverride:
+                              input.data.coursesRequiredOverride,
+                      }
+                    : {}),
+                ...(input.data.addedCourses
+                    ? { addedCourses: input.data.addedCourses }
+                    : {}),
+                ...(input.data.note ? { note: input.data.note } : {}),
+            },
+        );
+
+        return response
+            .header("Content-Type", "application/json")
+            .send(
+                { overrideId } satisfies APIv4.SetRequirementOverrideResponse,
+            );
+    },
+);
+
+// DELETE /:blockId/requirement-override/:overrideId — remove a requirement override
+graduationBlocksApp.delete(
+    "/:blockId/requirement-override/:overrideId",
+    async function (request: Request, response: Response) {
+        if (request.userToken === null) return response.status(401).end();
+
+        const blockId = request.params.blockId as APIv4.GraduationBlockId;
+        const overrideId = request.params
+            .overrideId as APIv4.RequirementOverrideId;
+
+        await deleteRequirementOverride(
+            request.userToken.uuid,
+            blockId,
+            overrideId,
+        );
+
+        return response.status(204).end();
+    },
+);
+
 // POST /share — share a block with an advisor
 graduationBlocksApp.post(
     "/share",
@@ -267,7 +338,11 @@ graduationBlocksApp.post(
             college: block.college,
             major: block.major,
             planType: block.planType,
+            catalogYear: block.catalogYear,
             semesters: JSON.parse(JSON.stringify(block.semesters)),
+            requirementOverrides: block.requirementOverrides
+                ? JSON.parse(JSON.stringify(block.requirementOverrides))
+                : undefined,
             sharedAt: new Date().toISOString(),
         });
 

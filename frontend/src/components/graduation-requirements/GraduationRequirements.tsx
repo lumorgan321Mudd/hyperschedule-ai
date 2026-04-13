@@ -4,7 +4,12 @@ import AppCss from "@components/App.module.css";
 import { useUserStore } from "@hooks/store/user";
 import { useActiveSectionsLookup } from "@hooks/section";
 import { useSectionsForTermsQuery } from "@hooks/api/query";
-import { fetchWithToast, schoolCodeFromEnum } from "@lib/api";
+import {
+    fetchWithToast,
+    schoolCodeFromEnum,
+    apiSetRequirementOverride,
+    apiDeleteRequirementOverride,
+} from "@lib/api";
 import * as APIv4 from "hyperschedule-shared/api/v4";
 import { termIsBefore } from "hyperschedule-shared/api/v4";
 import { CURRENT_TERM } from "hyperschedule-shared/api/current-term";
@@ -15,6 +20,7 @@ interface SchoolOption {
     code: string;
     name: string;
     hasMajorData: boolean;
+    availableCatalogYears?: string[];
 }
 
 export interface RequirementCourse {
@@ -92,11 +98,30 @@ export default memo(function GraduationRequirements() {
     const schedules = useUserStore((store) => store.schedules);
 
     const [schools, setSchools] = useState<SchoolOption[]>([]);
-    const [selectedSchool, setSelectedSchool] = useState<string>("");
     const [schoolData, setSchoolData] = useState<SchoolData | null>(null);
     const [selectedMajor, setSelectedMajor] = useState<string>("");
     const [checkAgainst, setCheckAgainst] = useState<string>("");
     const [loading, setLoading] = useState(false);
+    const [fetchError, setFetchError] = useState<string | null>(null);
+
+    // Derive defaults from user profile — these are reactive to server changes
+    const defaultSchool = server ? schoolCodeFromEnum(server.school) : "hmc";
+    const defaultCatalogYear = server?.classYear
+        ? APIv4.CLASS_YEAR_TO_CATALOG[server.classYear] ?? APIv4.DEFAULT_CATALOG_YEAR
+        : APIv4.DEFAULT_CATALOG_YEAR;
+
+    // User-overridable selections (null = use default)
+    const [schoolOverride, setSchoolOverride] = useState<string | null>(null);
+    const [catalogYearOverride, setCatalogYearOverride] = useState<string | null>(null);
+
+    const selectedSchool = schoolOverride ?? defaultSchool;
+    const catalogYear = catalogYearOverride ?? defaultCatalogYear;
+
+    // Available catalog years for the selected school
+    const availableYears = useMemo(() => {
+        const school = schools.find((s) => s.code === selectedSchool);
+        return school?.availableCatalogYears ?? [];
+    }, [schools, selectedSchool]);
 
     // Section lookups for area-code-based requirement matching (HSA, PE)
     const activeSectionsLookup = useActiveSectionsLookup();
@@ -141,41 +166,41 @@ export default memo(function GraduationRequirements() {
 
     // Fetch school list
     useEffect(() => {
-        fetchWithToast(`${__API_URL__}/v4/major-requirements/schools`, {
-            credentials: "include",
+        fetch(`${__API_URL__}/v4/major-requirements/schools`, {
+            cache: "no-cache",
         })
             .then((r) => r.json())
             .then((data: { schools: SchoolOption[] }) => {
                 setSchools(data.schools);
-                const defaultCode = server
-                    ? schoolCodeFromEnum(server.school)
-                    : "hmc";
-                setSelectedSchool(defaultCode);
             })
-            .catch(() => {});
+            .catch((e) => console.error("Failed to fetch schools:", e));
     }, []);
 
-    // Fetch school data when selected school changes
+    // Fetch school data when selected school or catalog year changes
     const fetchSchoolData = useCallback(
-        async (code: string) => {
-            if (!code) return;
+        async (code: string, year: string) => {
+            if (!code || !year) return;
             setLoading(true);
+            setFetchError(null);
+            const url = `${__API_URL__}/v4/major-requirements/${code}/${year}`;
             try {
-                const response = await fetchWithToast(
-                    `${__API_URL__}/v4/major-requirements/${code}`,
-                    { credentials: "include" },
-                );
+                const response = await fetch(url, { cache: "no-cache" });
                 if (response.ok) {
                     const data: SchoolData = await response.json();
                     setSchoolData(data);
-                    const majorKeys = Object.keys(data.majors);
+                    const majorKeys = Object.keys(data.majors ?? {});
                     if (majorKeys.includes("engineering")) setSelectedMajor("engineering");
                     else if (majorKeys.length > 0) setSelectedMajor(majorKeys[0]!);
                     else setSelectedMajor("");
                 } else {
+                    const errText = await response.text().catch(() => "");
+                    console.error(`Failed to fetch requirements: ${response.status} from ${url}`, errText);
+                    setFetchError(`HTTP ${response.status} from ${url}`);
                     setSchoolData(null);
                 }
-            } catch {
+            } catch (e) {
+                console.error(`Error fetching requirements from ${url}:`, e);
+                setFetchError(`Network error: ${e instanceof Error ? e.message : String(e)}`);
                 setSchoolData(null);
             }
             setLoading(false);
@@ -184,8 +209,19 @@ export default memo(function GraduationRequirements() {
     );
 
     useEffect(() => {
-        if (selectedSchool) void fetchSchoolData(selectedSchool);
-    }, [selectedSchool, fetchSchoolData]);
+        if (selectedSchool) void fetchSchoolData(selectedSchool, catalogYear);
+    }, [selectedSchool, catalogYear, fetchSchoolData]);
+
+    // Auto-set catalog year from selected block
+    useEffect(() => {
+        if (checkAgainst.startsWith("block:")) {
+            const blockId = checkAgainst.slice(6);
+            const block = graduationBlocks[blockId];
+            if (block?.catalogYear) {
+                setCatalogYearOverride(block.catalogYear);
+            }
+        }
+    }, [checkAgainst, graduationBlocks]);
 
     // Get courses from selected block or schedule for requirement checking
     const completedCourses = new Set<string>();
@@ -250,6 +286,61 @@ export default memo(function GraduationRequirements() {
     const blockEntries = Object.entries(graduationBlocks);
     const scheduleEntries = Object.entries(schedules);
 
+    // Active block for override editing
+    const activeBlockId = checkAgainst.startsWith("block:")
+        ? checkAgainst.slice(6)
+        : undefined;
+    const activeBlock = activeBlockId
+        ? graduationBlocks[activeBlockId]
+        : undefined;
+    const overrides = activeBlock?.requirementOverrides ?? {};
+
+    const findOverride = useCallback(
+        (groupName: string, section: string) => {
+            for (const [id, ov] of Object.entries(overrides)) {
+                if (
+                    ov.requirementGroupName === groupName &&
+                    ov.requirementSection === section
+                )
+                    return { id, override: ov };
+            }
+            return undefined;
+        },
+        [overrides],
+    );
+
+    const refreshUser = useUserStore((store) => store.getUser);
+
+    const handleSetOverride = useCallback(
+        async (
+            groupName: string,
+            section: string,
+            data: {
+                markedSatisfied?: boolean;
+                coursesRequiredOverride?: number;
+                note?: string;
+            },
+        ) => {
+            if (!activeBlockId) return;
+            await apiSetRequirementOverride(activeBlockId, {
+                requirementGroupName: groupName,
+                requirementSection: section,
+                ...data,
+            });
+            await refreshUser();
+        },
+        [activeBlockId, refreshUser],
+    );
+
+    const handleDeleteOverride = useCallback(
+        async (overrideId: string) => {
+            if (!activeBlockId) return;
+            await apiDeleteRequirementOverride(activeBlockId, overrideId);
+            await refreshUser();
+        },
+        [activeBlockId, refreshUser],
+    );
+
     return (
         <div className={Css.container}>
             <div className={Css.header}>
@@ -259,7 +350,7 @@ export default memo(function GraduationRequirements() {
                         College:
                         <select
                             value={selectedSchool}
-                            onChange={(e) => setSelectedSchool(e.target.value)}
+                            onChange={(e) => setSchoolOverride(e.target.value)}
                         >
                             {schools.map((s) => (
                                 <option key={s.code} value={s.code}>
@@ -268,6 +359,23 @@ export default memo(function GraduationRequirements() {
                             ))}
                         </select>
                     </label>
+                    {availableYears.length > 1 && (
+                        <label>
+                            Catalog Year:
+                            <select
+                                value={catalogYear}
+                                onChange={(e) =>
+                                    setCatalogYearOverride(e.target.value)
+                                }
+                            >
+                                {availableYears.map((y) => (
+                                    <option key={y} value={y}>
+                                        {y}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                    )}
                     {schoolData && (
                         <label>
                             Major:
@@ -325,6 +433,9 @@ export default memo(function GraduationRequirements() {
 
             {!loading && schoolData && (
                 <div className={Css.content}>
+                    <div className={Css.disclaimer}>
+                        The graduation requirements shown here are provided for planning purposes only and may not be fully accurate or up to date. Please verify all requirements with your academic advisor or your college&apos;s official catalog before making enrollment decisions.
+                    </div>
                     <p className={Css.catalogInfo}>
                         Catalog Year: {schoolData.catalog_year}
                         {schoolData.last_updated &&
@@ -347,6 +458,12 @@ export default memo(function GraduationRequirements() {
                                             courseRequirementTags={courseRequirementTags}
                                             courseDepartments={courseDepartments}
                                             tagSatisfiedBy={tagSatisfiedBy}
+                                            override={findOverride(group.name, "general")}
+                                            canEdit={!!activeBlockId}
+                                            onSetOverride={(data) =>
+                                                handleSetOverride(group.name, "general", data)
+                                            }
+                                            onDeleteOverride={handleDeleteOverride}
                                         />
                                     ),
                                 )}
@@ -391,9 +508,16 @@ export default memo(function GraduationRequirements() {
             )}
 
             {!loading && !schoolData && selectedSchool && (
-                <p className={Css.placeholder}>
-                    No requirements data available for this college yet.
-                </p>
+                <div className={Css.placeholder}>
+                    <p>No requirements data available for {selectedSchool} ({catalogYear}).</p>
+                    {fetchError && <p style={{fontSize: "12px", color: "#999"}}>{fetchError}</p>}
+                    <button
+                        style={{marginTop: 8, padding: "6px 16px", cursor: "pointer"}}
+                        onClick={() => void fetchSchoolData(selectedSchool, catalogYear)}
+                    >
+                        Retry
+                    </button>
+                </div>
             )}
         </div>
     );
@@ -408,6 +532,10 @@ export const RequirementGroupView = memo(function RequirementGroupView({
     courseRequirementTags,
     courseDepartments,
     tagSatisfiedBy,
+    override,
+    canEdit,
+    onSetOverride,
+    onDeleteOverride,
 }: {
     group: RequirementGroup;
     completedCourses: Set<string>;
@@ -417,7 +545,51 @@ export const RequirementGroupView = memo(function RequirementGroupView({
     courseRequirementTags: Map<string, string[]>;
     courseDepartments: Map<string, string>;
     tagSatisfiedBy?: Map<string, string>;
+    override?: { id: string; override: APIv4.RequirementOverride };
+    canEdit?: boolean;
+    onSetOverride?: (data: {
+        markedSatisfied?: boolean;
+        coursesRequiredOverride?: number;
+        note?: string;
+    }) => Promise<void>;
+    onDeleteOverride?: (overrideId: string) => Promise<void>;
 }) {
+    const [editing, setEditing] = useState(false);
+    const [editSatisfied, setEditSatisfied] = useState(false);
+    const [editCoursesRequired, setEditCoursesRequired] = useState("");
+    const [editNote, setEditNote] = useState("");
+    const [saving, setSaving] = useState(false);
+
+    const openEditor = useCallback(() => {
+        setEditSatisfied(override?.override.markedSatisfied ?? false);
+        setEditCoursesRequired(
+            override?.override.coursesRequiredOverride?.toString() ?? "",
+        );
+        setEditNote(override?.override.note ?? "");
+        setEditing(true);
+    }, [override]);
+
+    const saveOverride = useCallback(async () => {
+        if (!onSetOverride) return;
+        setSaving(true);
+        await onSetOverride({
+            markedSatisfied: editSatisfied || undefined,
+            coursesRequiredOverride: editCoursesRequired
+                ? parseInt(editCoursesRequired, 10)
+                : undefined,
+            note: editNote || undefined,
+        });
+        setSaving(false);
+        setEditing(false);
+    }, [onSetOverride, editSatisfied, editCoursesRequired, editNote]);
+
+    const removeOverride = useCallback(async () => {
+        if (!onDeleteOverride || !override) return;
+        setSaving(true);
+        await onDeleteOverride(override.id);
+        setSaving(false);
+        setEditing(false);
+    }, [onDeleteOverride, override]);
     // For area-code-based groups (HSA, PE): count courses matching area codes
     const excludeKeys = new Set(
         (group.excludeCourses ?? []).map((c) => courseBaseKey(c)),
@@ -486,18 +658,26 @@ export const RequirementGroupView = memo(function RequirementGroupView({
         };
     });
 
+    const isMarkedSatisfied = override?.override.markedSatisfied === true;
+
     const isAreaBased =
         group.areaCodeMatch !== undefined && group.areaCodeMatch.length > 0;
-    const completed = isAreaBased
-        ? areaMatched.filter((k) => !proposedCourses || !proposedCourses.has(k) || completedCourses.has(k)).length
-        : group.courses.filter((c) => isCourseCompleted(c, completedCourses))
-              .length;
-    const proposed = proposedCourses
-        ? isAreaBased
-            ? areaMatched.filter((k) => proposedCourses.has(k) && !completedCourses.has(k)).length
-            : group.courses.filter((c) => !isCourseCompleted(c, completedCourses) && isCourseProposed(c, proposedCourses)).length
-        : 0;
-    const total = group.coursesRequired ?? group.courses.length;
+    const completed = isMarkedSatisfied
+        ? (override?.override.coursesRequiredOverride ?? group.coursesRequired ?? group.courses.length)
+        : isAreaBased
+            ? areaMatched.filter((k) => !proposedCourses || !proposedCourses.has(k) || completedCourses.has(k)).length
+            : group.courses.filter((c) => isCourseCompleted(c, completedCourses))
+                  .length;
+    const proposed = isMarkedSatisfied
+        ? 0
+        : proposedCourses
+            ? isAreaBased
+                ? areaMatched.filter((k) => proposedCourses.has(k) && !completedCourses.has(k)).length
+                : group.courses.filter((c) => !isCourseCompleted(c, completedCourses) && isCourseProposed(c, proposedCourses)).length
+            : 0;
+    const total = override?.override.coursesRequiredOverride
+        ?? group.coursesRequired
+        ?? group.courses.length;
     const completedPercent =
         total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
     const proposedPercent =
@@ -507,13 +687,76 @@ export const RequirementGroupView = memo(function RequirementGroupView({
     return (
         <div className={Css.requirementGroup}>
             <div className={Css.groupHeader}>
-                <h4>{group.name}</h4>
+                <h4>
+                    {group.name}
+                    {override && (
+                        <span className={Css.overrideBadge} title={override.override.note ?? "Student override"}>
+                            overridden
+                        </span>
+                    )}
+                </h4>
                 {total > 0 && hasCheck && (
                     <span className={Css.progressBadge}>
                         {completed + proposed}/{total}
                     </span>
                 )}
+                {canEdit && (
+                    <button
+                        className={Css.editBtn}
+                        onClick={openEditor}
+                        title="Edit this requirement"
+                    >
+                        Edit
+                    </button>
+                )}
             </div>
+            {editing && (
+                <div className={Css.overrideEditor}>
+                    <label className={Css.overrideLabel}>
+                        <input
+                            type="checkbox"
+                            checked={editSatisfied}
+                            onChange={(e) => setEditSatisfied(e.target.checked)}
+                        />
+                        Mark as satisfied
+                    </label>
+                    <label className={Css.overrideLabel}>
+                        Courses required:
+                        <input
+                            type="number"
+                            min={0}
+                            value={editCoursesRequired}
+                            placeholder={String(group.coursesRequired ?? group.courses.length)}
+                            onChange={(e) => setEditCoursesRequired(e.target.value)}
+                            className={Css.overrideInput}
+                        />
+                    </label>
+                    <label className={Css.overrideLabel}>
+                        Note:
+                        <input
+                            type="text"
+                            value={editNote}
+                            placeholder="Reason for override..."
+                            onChange={(e) => setEditNote(e.target.value)}
+                            className={Css.overrideInput}
+                            maxLength={500}
+                        />
+                    </label>
+                    <div className={Css.overrideActions}>
+                        <button onClick={saveOverride} disabled={saving}>
+                            {saving ? "Saving..." : "Save"}
+                        </button>
+                        {override && (
+                            <button onClick={removeOverride} disabled={saving}>
+                                Remove Override
+                            </button>
+                        )}
+                        <button onClick={() => setEditing(false)} disabled={saving}>
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
             {total > 0 && hasCheck && (
                 <div className={Css.progressBarContainer}>
                     {proposedPercent > 0 && (
@@ -768,7 +1011,7 @@ export const ElectivesView = memo(function ElectivesView({
     return (
         <div className={Css.requirementGroup}>
             <div className={Css.groupHeader}>
-                <h4>Electives</h4>
+                <h4>Electives{total > 0 ? ` (${total} required)` : ""}</h4>
                 {total > 0 && hasCheck && (
                     <span className={Css.progressBadge}>
                         {completed + proposed}/{total}

@@ -119,6 +119,10 @@ export default defineConfig(({ command, mode }) => {
             port: 3000,
             strictPort: true,
             host: true,
+            proxy: {
+                "/v4": "http://localhost:8080",
+                "/auth": "http://localhost:8080",
+            },
         },
     };
 });

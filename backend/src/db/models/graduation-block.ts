@@ -26,6 +26,7 @@ export async function createBlock(
     college: APIv4.School,
     major?: string,
     planType?: APIv4.PlanType,
+    catalogYear?: string,
 ): Promise<APIv4.GraduationBlockId> {
     const blockId = uuid4("b") as APIv4.GraduationBlockId;
     const now = new Date().toISOString();
@@ -37,6 +38,7 @@ export async function createBlock(
         updatedAt: now,
         ...(major ? { major } : {}),
         ...(planType ? { planType } : {}),
+        ...(catalogYear ? { catalogYear } : {}),
     };
 
     if (staticMode) {
@@ -61,7 +63,12 @@ export async function createBlock(
 export async function updateBlock(
     userId: APIv4.UserId,
     blockId: APIv4.GraduationBlockId,
-    updates: { name?: string; college?: APIv4.School; major?: string },
+    updates: {
+        name?: string;
+        college?: APIv4.School;
+        major?: string;
+        catalogYear?: string;
+    },
 ): Promise<void> {
     const now = new Date().toISOString();
 
@@ -73,6 +80,8 @@ export async function updateBlock(
         if (updates.name !== undefined) block.name = updates.name;
         if (updates.college !== undefined) block.college = updates.college;
         if (updates.major !== undefined) block.major = updates.major;
+        if (updates.catalogYear !== undefined)
+            block.catalogYear = updates.catalogYear;
         block.updatedAt = now;
         logger.info(`Updated static block ${blockId} for user ${userId}`);
     } else {
@@ -85,6 +94,9 @@ export async function updateBlock(
             setFields[`graduationBlocks.${blockId}.college`] = updates.college;
         if (updates.major !== undefined)
             setFields[`graduationBlocks.${blockId}.major`] = updates.major;
+        if (updates.catalogYear !== undefined)
+            setFields[`graduationBlocks.${blockId}.catalogYear`] =
+                updates.catalogYear;
 
         const result = await collections.users.findOneAndUpdate(
             {
@@ -316,6 +328,143 @@ export async function setShareInfo(
     }
     logger.info(
         `Set share info for block ${blockId} -> ${shareInfo.advisorEmail}`,
+    );
+}
+
+export async function setRequirementOverride(
+    userId: APIv4.UserId,
+    blockId: APIv4.GraduationBlockId,
+    data: Omit<APIv4.RequirementOverride, "createdAt" | "updatedAt">,
+): Promise<APIv4.RequirementOverrideId> {
+    const now = new Date().toISOString();
+
+    if (staticMode) {
+        const user = getStaticUser(userId);
+        const blocks = ensureBlocks(user);
+        const block = blocks[blockId];
+        if (!block) throw Error("Block not found");
+        if (!block.requirementOverrides) block.requirementOverrides = {};
+
+        // Check for existing override with same group+section
+        let existingId: string | undefined;
+        for (const [id, ov] of Object.entries(block.requirementOverrides)) {
+            if (
+                ov.requirementGroupName === data.requirementGroupName &&
+                ov.requirementSection === data.requirementSection
+            ) {
+                existingId = id;
+                break;
+            }
+        }
+
+        const overrideId = (existingId ??
+            uuid4("rov")) as APIv4.RequirementOverrideId;
+        block.requirementOverrides[overrideId] = {
+            ...data,
+            createdAt:
+                existingId && block.requirementOverrides[existingId]
+                    ? block.requirementOverrides[existingId]!.createdAt
+                    : now,
+            updatedAt: now,
+        };
+        block.updatedAt = now;
+        logger.info(
+            `Set requirement override ${overrideId} on static block ${blockId}`,
+        );
+        return overrideId;
+    }
+
+    // MongoDB: find existing override with same group+section
+    const user = await collections.users.findOne({
+        _id: userId,
+        [`graduationBlocks.${blockId}`]: { $exists: true },
+    });
+    if (!user) throw Error("Block not found");
+    const block = user.graduationBlocks?.[blockId];
+    if (!block) throw Error("Block not found");
+
+    let existingId: string | undefined;
+    if (block.requirementOverrides) {
+        for (const [id, ov] of Object.entries(block.requirementOverrides)) {
+            if (
+                ov.requirementGroupName === data.requirementGroupName &&
+                ov.requirementSection === data.requirementSection
+            ) {
+                existingId = id;
+                break;
+            }
+        }
+    }
+
+    const overrideId = (existingId ??
+        uuid4("rov")) as APIv4.RequirementOverrideId;
+    const override: APIv4.RequirementOverride = {
+        ...data,
+        createdAt:
+            existingId && block.requirementOverrides?.[existingId]
+                ? block.requirementOverrides[existingId]!.createdAt
+                : now,
+        updatedAt: now,
+    };
+
+    await collections.users.updateOne(
+        { _id: userId },
+        {
+            $set: {
+                [`graduationBlocks.${blockId}.requirementOverrides.${overrideId}`]:
+                    override,
+                [`graduationBlocks.${blockId}.updatedAt`]: now,
+            },
+        } as UpdateFilter<APIv4.ServerUser>,
+    );
+    logger.info(
+        `Set requirement override ${overrideId} on block ${blockId}`,
+    );
+    return overrideId;
+}
+
+export async function deleteRequirementOverride(
+    userId: APIv4.UserId,
+    blockId: APIv4.GraduationBlockId,
+    overrideId: APIv4.RequirementOverrideId,
+): Promise<void> {
+    const now = new Date().toISOString();
+
+    if (staticMode) {
+        const user = getStaticUser(userId);
+        const blocks = ensureBlocks(user);
+        const block = blocks[blockId];
+        if (!block) throw Error("Block not found");
+        if (!block.requirementOverrides?.[overrideId])
+            throw Error("Override not found");
+        delete block.requirementOverrides[overrideId];
+        block.updatedAt = now;
+        logger.info(
+            `Deleted requirement override ${overrideId} from static block ${blockId}`,
+        );
+        return;
+    }
+
+    const result = await collections.users.findOneAndUpdate(
+        {
+            _id: userId,
+            [`graduationBlocks.${blockId}.requirementOverrides.${overrideId}`]:
+                { $exists: true },
+        },
+        {
+            $unset: {
+                [`graduationBlocks.${blockId}.requirementOverrides.${overrideId}`]:
+                    true,
+            },
+            $set: {
+                [`graduationBlocks.${blockId}.updatedAt`]: now,
+            },
+        } as UpdateFilter<APIv4.ServerUser>,
+    );
+    if (!result.ok || result.value === null)
+        throw Error("Override not found or delete failed");
+    logger.info(
+        `Deleted requirement override ${overrideId} from block ${blockId}`,
     );
 }
 

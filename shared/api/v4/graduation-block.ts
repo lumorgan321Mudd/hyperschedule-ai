@@ -25,10 +25,54 @@ export const SharedBlockSnapshotId = z
     .regex(/^snap~[A-Za-z0-9\-_]{22}$/);
 export type SharedBlockSnapshotId = z.infer<typeof SharedBlockSnapshotId>;
 
+export const RequirementOverrideId = z
+    .string()
+    .regex(/^rov~[A-Za-z0-9\-_]{22}$/);
+export type RequirementOverrideId = z.infer<typeof RequirementOverrideId>;
+
+// --- Catalog year ---
+
+export const CatalogYear = z.string().regex(/^\d{4}-\d{4}$/);
+export type CatalogYear = z.infer<typeof CatalogYear>;
+
+/** Maps graduation class year to the catalog year they entered under. */
+export const CLASS_YEAR_TO_CATALOG: Record<number, string> = {
+    2026: "2022-2023",
+    2027: "2023-2024",
+    2028: "2024-2025",
+    2029: "2025-2026",
+};
+
+export const SUPPORTED_CLASS_YEARS = [2026, 2027, 2028, 2029] as const;
+
+export const DEFAULT_CATALOG_YEAR = "2025-2026";
+
 // --- Plan type ---
 
 export const PlanType = z.enum(["standard", "hsa"]);
 export type PlanType = z.infer<typeof PlanType>;
+
+// --- Requirement overrides ---
+
+export const RequirementOverride = z.object({
+    requirementGroupName: z.string(),
+    requirementSection: z.string(), // "general" or a major key
+    markedSatisfied: z.boolean().optional(),
+    coursesRequiredOverride: z.number().optional(),
+    addedCourses: z
+        .array(
+            z.object({
+                course: z.string(),
+                title: z.string().optional(),
+                credits: z.number(),
+            }),
+        )
+        .optional(),
+    note: z.string().max(500).optional(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+});
+export type RequirementOverride = z.infer<typeof RequirementOverride>;
 
 // --- Core types ---
 
@@ -57,8 +101,12 @@ export const GraduationBlock = z.object({
     college: SchoolEnum,
     major: z.string().optional(),
     planType: PlanType.optional(),
+    catalogYear: CatalogYear.optional(),
     semesters: z.record(BlockSemesterId, BlockSemester),
     shares: BlockShareInfo.array().optional(),
+    requirementOverrides: z
+        .record(RequirementOverrideId, RequirementOverride)
+        .optional(),
     createdAt: z.string(),
     updatedAt: z.string(),
     /** @deprecated Kept for backward compat with persisted data. */
@@ -90,7 +138,11 @@ export const SharedBlockSnapshot = z.object({
     college: SchoolEnum,
     major: z.string().optional(),
     planType: PlanType.optional(),
+    catalogYear: CatalogYear.optional(),
     semesters: z.record(z.string(), BlockSemester),
+    requirementOverrides: z
+        .record(z.string(), RequirementOverride)
+        .optional(),
     sharedAt: z.string(),
     approvals: SnapshotApproval.array().optional(),
 });
@@ -103,6 +155,7 @@ export const CreateBlockRequest = z.object({
     college: SchoolEnum,
     major: z.string().optional(),
     planType: PlanType.optional(),
+    catalogYear: CatalogYear.optional(),
 });
 export type CreateBlockRequest = z.infer<typeof CreateBlockRequest>;
 
@@ -116,6 +169,7 @@ export const UpdateBlockRequest = z.object({
     name: z.string().min(1).max(100).optional(),
     college: SchoolEnum.optional(),
     major: z.string().optional(),
+    catalogYear: CatalogYear.optional(),
 });
 export type UpdateBlockRequest = z.infer<typeof UpdateBlockRequest>;
 
@@ -191,6 +245,36 @@ export const DeleteSnapshotRequest = z.object({
     snapshotId: SharedBlockSnapshotId,
 });
 export type DeleteSnapshotRequest = z.infer<typeof DeleteSnapshotRequest>;
+
+// --- Requirement override requests ---
+
+export const SetRequirementOverrideRequest = z.object({
+    blockId: GraduationBlockId,
+    requirementGroupName: z.string(),
+    requirementSection: z.string(),
+    markedSatisfied: z.boolean().optional(),
+    coursesRequiredOverride: z.number().optional(),
+    addedCourses: z
+        .array(
+            z.object({
+                course: z.string(),
+                title: z.string().optional(),
+                credits: z.number(),
+            }),
+        )
+        .optional(),
+    note: z.string().max(500).optional(),
+});
+export type SetRequirementOverrideRequest = z.infer<
+    typeof SetRequirementOverrideRequest
+>;
+
+export const SetRequirementOverrideResponse = z.object({
+    overrideId: RequirementOverrideId,
+});
+export type SetRequirementOverrideResponse = z.infer<
+    typeof SetRequirementOverrideResponse
+>;
 
 // --- Role types ---
 

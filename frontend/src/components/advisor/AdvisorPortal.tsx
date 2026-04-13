@@ -115,6 +115,12 @@ export default memo(function AdvisorPortal() {
                                 {snap.planType === "hsa" && (
                                     <span className={Css.hsaBadge}>HSA</span>
                                 )}
+                                {snap.requirementOverrides &&
+                                    Object.keys(snap.requirementOverrides).length > 0 && (
+                                        <span className={Css.overrideBadge}>
+                                            {Object.keys(snap.requirementOverrides).length} override{Object.keys(snap.requirementOverrides).length !== 1 ? "s" : ""}
+                                        </span>
+                                    )}
                             </span>
                             <span className={Css.snapshotStudent}>
                                 {snap.studentEppn}
@@ -313,6 +319,52 @@ const SnapshotDetail = memo(function SnapshotDetail({
                     {new Date(snapshot.sharedAt).toLocaleDateString()}
                 </p>
             </div>
+
+            {/* Requirement overrides from student */}
+            {snapshot.requirementOverrides &&
+                Object.keys(snapshot.requirementOverrides).length > 0 && (
+                    <div className={Css.overrideSection}>
+                        <h4>Student Requirement Overrides</h4>
+                        <p className={Css.overrideWarning}>
+                            The student has made {Object.keys(snapshot.requirementOverrides).length} override(s) to the standard graduation requirements.
+                        </p>
+                        {Object.entries(snapshot.requirementOverrides).map(
+                            ([id, ov]) => (
+                                <div key={id} className={Css.overrideItem}>
+                                    <strong>{ov.requirementGroupName}</strong>
+                                    <span className={Css.overrideSection2}>
+                                        ({ov.requirementSection})
+                                    </span>
+                                    <ul className={Css.overrideDetails}>
+                                        {ov.markedSatisfied && (
+                                            <li>Marked as satisfied</li>
+                                        )}
+                                        {ov.coursesRequiredOverride !==
+                                            undefined && (
+                                            <li>
+                                                Courses required changed to{" "}
+                                                {ov.coursesRequiredOverride}
+                                            </li>
+                                        )}
+                                        {ov.addedCourses &&
+                                            ov.addedCourses.length > 0 && (
+                                                <li>
+                                                    Added{" "}
+                                                    {ov.addedCourses.length}{" "}
+                                                    custom course(s)
+                                                </li>
+                                            )}
+                                    </ul>
+                                    {ov.note && (
+                                        <p className={Css.overrideNote}>
+                                            Student note: {ov.note}
+                                        </p>
+                                    )}
+                                </div>
+                            ),
+                        )}
+                    </div>
+                )}
 
             {/* Approval history */}
             {snapshot.approvals && snapshot.approvals.length > 0 && (

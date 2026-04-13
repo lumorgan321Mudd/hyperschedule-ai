@@ -16,12 +16,17 @@ const COLLEGES: { value: APIv4.School; label: string }[] = [
     { value: APIv4.School.PTZ, label: "Pitzer College" },
 ];
 
+const CLASS_YEARS = APIv4.SUPPORTED_CLASS_YEARS;
+
 export default memo(function CreateBlock() {
     const setPopup = useStore((store) => store.setPopup);
     const getUser = useUserStore((store) => store.getUser);
     const server = useUserStore((store) => store.server);
 
     const [name, setName] = useState("");
+    const [classYear, setClassYear] = useState<number>(
+        server?.classYear ?? CLASS_YEARS[CLASS_YEARS.length - 1] ?? 2029,
+    );
     const [college, setCollege] = useState<APIv4.School>(
         server?.school ?? APIv4.School.HMC,
     );
@@ -29,28 +34,37 @@ export default memo(function CreateBlock() {
     const [majors, setMajors] = useState<{ key: string; name: string }[]>([]);
     const [submitting, setSubmitting] = useState(false);
 
-    // Fetch available majors when college changes
+    const catalogYear = APIv4.CLASS_YEAR_TO_CATALOG[classYear] ?? APIv4.DEFAULT_CATALOG_YEAR;
+
+    // Fetch available majors when college or catalog year changes
     useEffect(() => {
         const code = schoolCodeFromEnum(college);
-        fetchWithToast(`${__API_URL__}/v4/major-requirements/${code}`, {
-            credentials: "include",
-        })
+        fetchWithToast(
+            `${__API_URL__}/v4/major-requirements/${code}/${catalogYear}`,
+            { credentials: "include", cache: "no-cache" },
+        )
             .then((r) => (r.ok ? r.json() : null))
-            .then((data: { majors: Record<string, { name: string }> } | null) => {
-                if (data?.majors) {
-                    const entries = Object.entries(data.majors).map(
-                        ([key, m]) => ({ key, name: m.name }),
-                    );
-                    setMajors(entries);
-                    if (entries.some((e) => e.key === "engineering")) {
-                        setMajor("engineering");
+            .then(
+                (
+                    data: {
+                        majors: Record<string, { name: string }>;
+                    } | null,
+                ) => {
+                    if (data?.majors) {
+                        const entries = Object.entries(data.majors).map(
+                            ([key, m]) => ({ key, name: m.name }),
+                        );
+                        setMajors(entries);
+                        if (entries.some((e) => e.key === "engineering")) {
+                            setMajor("engineering");
+                        }
+                    } else {
+                        setMajors([]);
                     }
-                } else {
-                    setMajors([]);
-                }
-            })
+                },
+            )
             .catch(() => setMajors([]));
-    }, [college]);
+    }, [college, catalogYear]);
 
     const handleCreate = useCallback(async () => {
         if (!name.trim()) {
@@ -62,6 +76,7 @@ export default memo(function CreateBlock() {
             await apiFetch.createBlock({
                 name: name.trim(),
                 college,
+                catalogYear,
                 ...(major ? { major } : {}),
             });
             await getUser();
@@ -71,7 +86,7 @@ export default memo(function CreateBlock() {
             toast.error("Failed to create plan");
         }
         setSubmitting(false);
-    }, [name, college, major, getUser, setPopup]);
+    }, [name, college, major, catalogYear, getUser, setPopup]);
 
     return (
         <div className={Css.container}>
@@ -86,6 +101,20 @@ export default memo(function CreateBlock() {
                     maxLength={100}
                     autoFocus
                 />
+            </label>
+            <label>
+                Class Year:
+                <select
+                    value={classYear}
+                    onChange={(e) => setClassYear(Number(e.target.value))}
+                >
+                    {CLASS_YEARS.map((y) => (
+                        <option key={y} value={y}>
+                            Class of {y} ({APIv4.CLASS_YEAR_TO_CATALOG[y]}{" "}
+                            catalog)
+                        </option>
+                    ))}
+                </select>
             </label>
             <label>
                 College:

@@ -1,8 +1,8 @@
 {
     "school": "Pitzer College",
     "school_code": "pitzer",
-    "catalog_year": "2025-2026",
-    "last_updated": "2026-04-01",
+    "catalog_year": "2024-2025",
+    "last_updated": "2026-04-10 (derived from 2025-2026 catalog)",
     "advising": {
         "model": "single-primary",
         "description": "Each student is assigned one faculty advisor, typically in their major field group. Students may request a change of advisor at any time. First-year students are initially assigned a pre-major advisor."

@@ -1,1 +1,9 @@
 node_modules/
+.git
+*.dockerfile
+docker-compose*.yml
+.devcontainer
+.vscode
+.claude
+.context
+frontend/dist

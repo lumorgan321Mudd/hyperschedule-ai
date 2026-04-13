@@ -1,8 +1,8 @@
 {
     "school": "Scripps College",
     "school_code": "scripps",
-    "catalog_year": "2025-2026",
-    "last_updated": "2026-04-01",
+    "catalog_year": "2023-2024",
+    "last_updated": "2026-04-10 (derived from 2025-2026 catalog)",
     "advising": {
         "model": "single-primary",
         "description": "Each student is assigned a first-year faculty advisor upon entry. When declaring a major (typically spring of sophomore year), students select a major advisor who assists with major-specific planning."

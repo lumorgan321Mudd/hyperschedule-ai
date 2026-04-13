@@ -12,13 +12,14 @@ import { PUBKEY as devPub, PRIVKEY as devPriv } from "./dev-keys";
 
 let pub: string, priv: string;
 
-if (process.env.NODE_ENV !== "production") {
+if (process.env.JWT_PUBKEY && process.env.JWT_PRIVKEY) {
+    // Production: use environment variables (base64-encoded)
+    pub = Buffer.from(process.env.JWT_PUBKEY, "base64").toString("utf-8");
+    priv = Buffer.from(process.env.JWT_PRIVKEY, "base64").toString("utf-8");
+} else {
+    // Development: use built-in dev keys
     pub = devPub;
     priv = devPriv;
-} else {
-    pub = "";
-    priv = "";
-    throw Error("PUBKEY and PRIVKEY are not set in keys.ts");
 }
 
 export { pub as PUBKEY, priv as PRIVKEY };

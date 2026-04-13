@@ -248,6 +248,32 @@ export async function apiApproveSnapshot(
     );
 }
 
+export async function apiSetRequirementOverride(
+    blockId: string,
+    body: unknown,
+): Promise<APIv4.SetRequirementOverrideResponse> {
+    const response = await fetchWithToast(
+        `${__API_URL__}/v4/graduation-blocks/${blockId}/requirement-override`,
+        {
+            method: "PUT",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        },
+    );
+    return response.json();
+}
+
+export async function apiDeleteRequirementOverride(
+    blockId: string,
+    overrideId: string,
+): Promise<void> {
+    await fetchWithToast(
+        `${__API_URL__}/v4/graduation-blocks/${blockId}/requirement-override/${overrideId}`,
+        { method: "DELETE", credentials: "include" },
+    );
+}
+
 /** Convert school enum to lowercase code used in requirement data file paths. */
 export function schoolCodeFromEnum(school: APIv4.School): string {
     switch (school) {

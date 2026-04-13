@@ -108,6 +108,7 @@ const init: Zustand.StateCreator<Store> = (set, get) => {
                 _id: user._id,
                 eppn: user.eppn,
                 school: user.school,
+                classYear: user.classYear,
                 role: user.role,
             },
             graduationBlocks: user.graduationBlocks ?? {},

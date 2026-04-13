@@ -1,0 +1,361 @@
+{
+    "school": "Harvey Mudd College",
+    "school_code": "hmc",
+    "catalog_year": "2022-2023",
+    "last_updated": "2026-04-10 (derived from 2025-2026 catalog)",
+    "general_requirements": [
+        {
+            "name": "Common Core",
+            "description": "Required foundation courses for all HMC students. First-year Core must be completed in the first two semesters; second-year Core by end of fourth semester.",
+            "courses": [
+                { "course": "MATH019 HM", "title": "Single and Multivariable Calculus", "credits": 4 },
+                { "course": "MATH073 HM", "title": "Linear Algebra", "credits": 3 },
+                { "course": "PHYS023 HM", "title": "Special Relativity", "credits": 1.5 },
+                { "course": "PHYS024 HM", "title": "Mechanics and Wave Motion", "credits": 4 },
+                { "course": "PHYS050 HM", "title": "Physics Laboratory", "credits": 1 },
+                { "course": "CHEM042 HM", "title": "Chemistry in the Modern World", "credits": 4 },
+                { "course": "CHEM024 HM", "title": "Chemistry Laboratory", "credits": 1 },
+                { "course": "BIOL046 HM", "title": "Introduction to Biology", "credits": 3 },
+                { "course": "BIOL023 HM", "title": "Biology Laboratory", "credits": 1 },
+                { "course": "CSCI005 HM", "title": "Introduction to Computer Science", "credits": 3 },
+                { "course": "ENGR079 HM", "title": "Introduction to Engineering Systems", "credits": 4 },
+                { "course": "WRIT001 HM", "title": "Introduction to Academic Writing", "credits": 2 },
+                { "course": "HSA010 HM", "title": "Critical Inquiry", "credits": 3 },
+                { "course": "CORE099 HM", "title": "STEM and Social Impact", "credits": 3 }
+            ],
+            "creditsRequired": 37.5
+        },
+        {
+            "name": "HSA Requirements",
+            "description": "10 full HSA courses beyond HSA 010 (which is part of the Common Core). Must include a 4-course concentration in one discipline, distribution across 5 different disciplines, at least 1 writing-intensive course, and at least 4 courses from HMC HSA faculty.",
+            "courses": [],
+            "creditsRequired": 30,
+            "coursesRequired": 10,
+            "areaCodeMatch": ["4HSA", "4HSS"],
+            "excludeCourses": ["HSA010 HM"],
+            "subCategories": [
+                { "name": "Writing Intensive", "coursesRequired": 1, "autoDetect": { "areaCode": "4WRT" } },
+                { "name": "HMC Faculty", "coursesRequired": 4, "autoDetect": { "areaCode": "4HSA" } },
+                { "name": "Concentration", "coursesRequired": 4, "tagValue": "hsa-concentration", "countMode": "largestDepartmentCluster", "description": "4 courses in one discipline" },
+                { "name": "Distribution", "coursesRequired": 5, "tagValue": "hsa-distribution", "countMode": "distinctDepartments", "description": "Courses across 5 different disciplines" }
+            ]
+        },
+        {
+            "name": "PE Requirements",
+            "description": "Three activity courses, two team sport seasons, or a combination. At least one PE course within the first two years. Pass/no credit grading.",
+            "courses": [],
+            "creditsRequired": 3,
+            "coursesRequired": 3,
+            "areaCodeMatch": ["4PTC", "1PE", "PE"]
+        }
+    ],
+    "majors": {
+        "computer_science": {
+            "name": "Computer Science",
+            "department": "Computer Science",
+            "major_courses": {
+                "required": [
+                    { "course": "CSCI060 HM", "title": "Principles of Computer Science", "credits": 3, "alternatives": ["CSCI042 HM"] },
+                    { "course": "MATH055 HM", "title": "Discrete Mathematics", "credits": 3 },
+                    { "course": "CSCI070 HM", "title": "Data Structures and Program Development", "credits": 3 },
+                    { "course": "CSCI081 HM", "title": "Computability and Logic", "credits": 3 },
+                    { "course": "CSCI105 HM", "title": "Computer Systems", "credits": 3 },
+                    { "course": "CSCI123 HM", "title": "Computing Practices, Projects, and People", "credits": 3 },
+                    { "course": "CSCI140 HM", "title": "Algorithms", "credits": 3 },
+                    { "course": "CSCI183 HM", "title": "Computer Science Clinic I", "credits": 3 },
+                    { "course": "CSCI184 HM", "title": "Computer Science Clinic II", "credits": 3 },
+                    { "course": "CSCI195 HM", "title": "Computer Science Colloquium", "credits": 0 }
+                ],
+                "electives": {
+                    "description": "Three upper-division CS electives (9 credits, courses numbered 100+, excluding clinic and colloquium). Approved cross-listed courses from other departments also count.",
+                    "coursesRequired": 3,
+                    "tagValue": "cs-elective",
+                    "courses": [
+                        { "course": "BIOL188 HM", "title": "Advanced Computational Biology", "credits": 3 },
+                        { "course": "CHEM080 HM", "title": "Numerical Methods for the Central Science", "credits": 3 },
+                        { "course": "ENGR085A HM", "title": "Digital Electronics", "credits": 3 },
+                        { "course": "ENGR151 HM", "title": "Analog Circuit Design", "credits": 3 },
+                        { "course": "ENGR155 HM", "title": "Microprocessor-Based Systems: Design and Applications", "credits": 3 },
+                        { "course": "ENGR205 HM", "title": "State Estimation", "credits": 3 },
+                        { "course": "MATH104 HM", "title": "Graph Theory", "credits": 3 },
+                        { "course": "MATH106 HM", "title": "Combinatorics", "credits": 3 },
+                        { "course": "MATH157 HM", "title": "Intermediate Probability", "credits": 3 },
+                        { "course": "MATH164 HM", "title": "Scientific Computing", "credits": 3 },
+                        { "course": "MATH165 HM", "title": "Numerical Analysis", "credits": 3 },
+                        { "course": "MATH167 HM", "title": "Complexity Theory", "credits": 3 },
+                        { "course": "MATH187 HM", "title": "Operations Research", "credits": 3 },
+                        { "course": "MCBI118A HM", "title": "Introduction to Mathematical Biology", "credits": 3 },
+                        { "course": "MCBI118B HM", "title": "Introduction to Computational Biology", "credits": 3 },
+                        { "course": "PHYS084 HM", "title": "Quantum Information", "credits": 3 },
+                        { "course": "PHYS170 HM", "title": "Computational Methods in Physics", "credits": 3 },
+                        { "course": "PSYC183 SC", "title": "Human Data Science Ethics", "credits": 3 }
+                    ]
+                }
+            }
+        },
+        "mathematics": {
+            "name": "Mathematics",
+            "department": "Mathematics",
+            "major_courses": {
+                "required": [
+                    { "course": "MATH055 HM", "title": "Discrete Mathematics", "credits": 3 },
+                    { "course": "MATH062 HM", "title": "Introduction to Probability and Statistics", "credits": 3 },
+                    { "course": "MATH082 HM", "title": "Differential Equations", "credits": 3 },
+                    { "course": "MATH131 HM", "title": "Mathematical Analysis I", "credits": 3 },
+                    { "course": "MATH171 HM", "title": "Abstract Algebra I", "credits": 3 },
+                    { "course": "MATH180 HM", "title": "Introduction to Partial Differential Equations", "credits": 3 },
+                    { "course": "CSCI081 HM", "title": "Computational Mathematics (pick one)", "credits": 3, "alternatives": ["CSCI142 HM", "MATH164 HM", "MATH165 HM", "MATH168 HM"] },
+                    { "course": "MATH193 HM", "title": "Mathematics Clinic", "credits": 3, "alternatives": ["MATH197 HM"] },
+                    { "course": "MATH198 HM", "title": "Undergraduate Mathematics Forum", "credits": 0 },
+                    { "course": "MATH199 HM", "title": "Mathematics Colloquium", "credits": 0 }
+                ],
+                "electives": {
+                    "description": "Three additional mathematics electives at or above MATH 100 (minimum 7 credits total)",
+                    "coursesRequired": 3,
+                    "tagValue": "math-elective",
+                    "level": "100+"
+                }
+            }
+        },
+        "physics": {
+            "name": "Physics",
+            "department": "Physics",
+            "major_courses": {
+                "required": [
+                    { "course": "MATH082 HM", "title": "Differential Equations", "credits": 3 },
+                    { "course": "PHYS051 HM", "title": "Electromagnetic Theory and Optics", "credits": 3 },
+                    { "course": "PHYS052 HM", "title": "Quantum Physics", "credits": 3 },
+                    { "course": "PHYS054 HM", "title": "Modern Physics Laboratory", "credits": 1 },
+                    { "course": "PHYS064 HM", "title": "Mathematical and Computational Methods for Physicists", "credits": 3 },
+                    { "course": "PHYS111 HM", "title": "Theoretical Mechanics", "credits": 3 },
+                    { "course": "PHYS116 HM", "title": "Quantum Mechanics", "credits": 3 },
+                    { "course": "PHYS117 HM", "title": "Statistical Mechanics and Thermodynamics", "credits": 3 },
+                    { "course": "PHYS133 HM", "title": "Electronics Laboratory", "credits": 3 },
+                    { "course": "PHYS134 HM", "title": "Optics Laboratory", "credits": 3 },
+                    { "course": "PHYS151 HM", "title": "Electromagnetic Fields", "credits": 3 },
+                    { "course": "PHYS181 HM", "title": "Advanced Laboratory", "credits": 3 },
+                    { "course": "PHYS199 HM", "title": "Senior Thesis in Physics", "credits": 3 },
+                    { "course": "PHYS195 HM", "title": "Physics Colloquium", "credits": 0 }
+                ],
+                "electives": {
+                    "description": "Two additional physics half-course electives",
+                    "coursesRequired": 2,
+                    "tagValue": "physics-elective"
+                }
+            }
+        },
+        "engineering": {
+            "name": "Engineering",
+            "department": "Engineering",
+            "major_courses": {
+                "required": [
+                    { "course": "ENGR082 HM", "title": "Chemical and Thermal Processes", "credits": 3 },
+                    { "course": "ENGR083 HM", "title": "Continuum Mechanics", "credits": 3 },
+                    { "course": "ENGR084 HM", "title": "Electronic and Magnetic Circuits and Devices", "credits": 3 },
+                    { "course": "ENGR085 HM", "title": "Digital Electronics and Computer Engineering", "credits": 3 },
+                    { "course": "ENGR086 HM", "title": "Materials Engineering", "credits": 3 },
+                    { "course": "MATH056 HM", "title": "Data, Probability, and Statistics for Engineers", "credits": 3 },
+                    { "course": "ENGR072 HM", "title": "Applied Mathematics for Engineering", "credits": 3 },
+                    { "course": "ENGR079 HM", "title": "Introduction to Engineering Systems", "credits": 4 },
+                    { "course": "ENGR101 HM", "title": "Advanced Systems Engineering I", "credits": 3 },
+                    { "course": "ENGR102 HM", "title": "Advanced Systems Engineering II", "credits": 3 },
+                    { "course": "ENGR004 HM", "title": "Introduction to Engineering Design and Manufacturing", "credits": 3 },
+                    { "course": "ENGR080 HM", "title": "Experimental Engineering", "credits": 4 },
+                    { "course": "ENGR111 HM", "title": "Engineering Clinic I", "credits": 3 },
+                    { "course": "ENGR112 HM", "title": "Engineering Clinic II", "credits": 3 },
+                    { "course": "ENGR113 HM", "title": "Engineering Clinic III", "credits": 3 },
+                    { "course": "ENGR122 HM", "title": "Engineering Seminar", "credits": 0 },
+                    { "course": "ENGR124 HM", "title": "Engineering Seminar", "credits": 0 }
+                ],
+                "electives": {
+                    "description": "Three upper-division engineering technical electives (numbered 100+). CSCI070 HM also accepted.",
+                    "coursesRequired": 3,
+                    "tagValue": "engineering-elective",
+                    "level": "100+"
+                }
+            }
+        },
+        "biology": {
+            "name": "Biology",
+            "department": "Biology",
+            "major_courses": {
+                "required": [
+                    { "course": "BIOL054 HM", "title": "Experimental Biology Laboratory", "credits": 1 },
+                    { "course": "BIOL154 HM", "title": "Biostatistics", "credits": 3 },
+                    { "course": "BIOL101 HM", "title": "Comparative Physiology", "credits": 3 },
+                    { "course": "BIOL108 HM", "title": "Ecology and Environmental Biology", "credits": 3 },
+                    { "course": "BIOL109 HM", "title": "Evolutionary Biology", "credits": 3 },
+                    { "course": "BIOL113 HM", "title": "Molecular Genetics", "credits": 3 },
+                    { "course": "CHEM056 HM", "title": "Organic Chemistry I", "credits": 3 },
+                    { "course": "CHEM058 HM", "title": "Organic Chemistry I Laboratory", "credits": 1 },
+                    { "course": "CHEM105 HM", "title": "Organic Chemistry II", "credits": 3 },
+                    { "course": "BIOL193 HM", "title": "Senior Thesis Research: Biology", "credits": 3, "alternatives": ["BIOL195 HM"] },
+                    { "course": "BIOL191 HM", "title": "Biology Colloquium", "credits": 0 }
+                ],
+                "electives": {
+                    "description": "11 credits of advanced biology: at least 2 laboratory courses, 1 seminar-style course, and additional electives. Up to 2 credits of BIOL197 (Directed Reading) allowed.",
+                    "coursesRequired": 4,
+                    "tagValue": "biology-elective"
+                }
+            }
+        },
+        "chemistry": {
+            "name": "Chemistry",
+            "department": "Chemistry",
+            "major_courses": {
+                "required": [
+                    { "course": "CHEM051 HM", "title": "Physical Chemistry: Thermodynamics and Kinetics", "credits": 3 },
+                    { "course": "CHEM056 HM", "title": "Organic Chemistry I", "credits": 3 },
+                    { "course": "CHEM103 HM", "title": "Chemical Analysis", "credits": 3 },
+                    { "course": "CHEM104 HM", "title": "Inorganic Chemistry", "credits": 3 },
+                    { "course": "CHEM182 HM", "title": "Biochemistry", "credits": 3 },
+                    { "course": "PHYS051 HM", "title": "Electromagnetic Theory and Optics", "credits": 3 },
+                    { "course": "BIOL154 HM", "title": "Biostatistics", "credits": 3, "alternatives": ["ENGR072 HM", "MATH082 HM"] },
+                    { "course": "CHEM151 HM", "title": "Senior Thesis Research in Chemistry", "credits": 3 },
+                    { "course": "CHEM152 HM", "title": "Senior Thesis Research in Chemistry", "credits": 3 },
+                    { "course": "CHEM199 HM", "title": "Chemistry Seminar", "credits": 0 }
+                ],
+                "electives": {
+                    "description": "Four foundation laboratories chosen from: CHEM053, CHEM058, CHEM109, CHEM110, CHEM184. Plus 8-9 credits of in-depth chemistry electives (100+ level).",
+                    "coursesRequired": 7,
+                    "tagValue": "chemistry-elective"
+                }
+            }
+        },
+        "joint_cs_math": {
+            "name": "Joint Computer Science and Mathematics",
+            "departments": ["Computer Science", "Mathematics"],
+            "major_courses": {
+                "required": [
+                    { "course": "CSCI060 HM", "title": "Principles of Computer Science", "credits": 3, "alternatives": ["CSCI042 HM"] },
+                    { "course": "MATH055 HM", "title": "Discrete Mathematics", "credits": 3 },
+                    { "course": "CSCI081 HM", "title": "Computability and Logic", "credits": 3 },
+                    { "course": "MATH168 HM", "title": "Algorithms", "credits": 3, "alternatives": ["CSCI140 HM"] },
+                    { "course": "CSCI070 HM", "title": "Data Structures and Program Development", "credits": 3 },
+                    { "course": "MATH062 HM", "title": "Introduction to Probability and Statistics", "credits": 3 },
+                    { "course": "MATH082 HM", "title": "Differential Equations", "credits": 3 },
+                    { "course": "MATH131 HM", "title": "Mathematical Analysis I", "credits": 3 },
+                    { "course": "MATH171 HM", "title": "Abstract Algebra I", "credits": 3 },
+                    { "course": "MATH193 HM", "title": "Mathematics Clinic", "credits": 3, "alternatives": ["CSCI183 HM", "CSMT183 HM"] },
+                    { "course": "CSCI195 HM", "title": "Computer Science Colloquium", "credits": 0 },
+                    { "course": "MATH199 HM", "title": "Mathematics Colloquium", "credits": 0 },
+                    { "course": "MATH198 HM", "title": "Undergraduate Mathematics Forum", "credits": 0 }
+                ],
+                "electives": {
+                    "description": "12 credits of upper-division technical electives (numbered 100+): minimum 6 credits from mathematics, minimum 6 credits from computer science.",
+                    "coursesRequired": 4,
+                    "tagValue": "joint-cs-math-elective"
+                }
+            }
+        },
+        "joint_math_physics": {
+            "name": "Joint Mathematics and Physics",
+            "departments": ["Mathematics", "Physics"],
+            "major_courses": {
+                "required": [
+                    { "course": "MATH055 HM", "title": "Discrete Mathematics", "credits": 3 },
+                    { "course": "MATH082 HM", "title": "Differential Equations", "credits": 3 },
+                    { "course": "MATH131 HM", "title": "Mathematical Analysis I", "credits": 3 },
+                    { "course": "MATH157 HM", "title": "Intermediate Probability", "credits": 3 },
+                    { "course": "MATH171 HM", "title": "Abstract Algebra I", "credits": 3 },
+                    { "course": "MATH180 HM", "title": "Introduction to Partial Differential Equations", "credits": 3 },
+                    { "course": "PHYS051 HM", "title": "Electromagnetic Theory and Optics", "credits": 3 },
+                    { "course": "PHYS052 HM", "title": "Quantum Physics", "credits": 3 },
+                    { "course": "PHYS054 HM", "title": "Modern Physics Laboratory", "credits": 1 },
+                    { "course": "PHYS111 HM", "title": "Theoretical Mechanics", "credits": 3 },
+                    { "course": "PHYS116 HM", "title": "Quantum Mechanics", "credits": 3 },
+                    { "course": "PHYS117 HM", "title": "Statistical Mechanics and Thermodynamics", "credits": 3 },
+                    { "course": "PHYS134 HM", "title": "Optics Laboratory", "credits": 3 },
+                    { "course": "PHYS151 HM", "title": "Electromagnetic Fields", "credits": 3, "alternatives": ["PHYS154 HM", "PHYS156 HM"] },
+                    { "course": "MATH164 HM", "title": "Scientific Computing (pick one)", "credits": 3, "alternatives": ["MATH165 HM", "PHYS170 HM"] },
+                    { "course": "PHYS199 HM", "title": "Senior Thesis in Physics", "credits": 3, "alternatives": ["MATH197 HM", "PHYS193 HM", "MATH193 HM"] },
+                    { "course": "MATH198 HM", "title": "Undergraduate Mathematics Forum", "credits": 0 },
+                    { "course": "MATH199 HM", "title": "Mathematics Colloquium", "credits": 0 },
+                    { "course": "PHYS195 HM", "title": "Physics Colloquium", "credits": 0 }
+                ]
+            }
+        },
+        "joint_chem_bio": {
+            "name": "Joint Chemistry and Biology",
+            "departments": ["Chemistry", "Biology"],
+            "major_courses": {
+                "required": [
+                    { "course": "CHEM051 HM", "title": "Physical Chemistry: Thermodynamics and Kinetics", "credits": 3 },
+                    { "course": "CHEM056 HM", "title": "Organic Chemistry I", "credits": 3 },
+                    { "course": "CHEM058 HM", "title": "Organic Chemistry I Laboratory", "credits": 1 },
+                    { "course": "CHEM105 HM", "title": "Organic Chemistry II", "credits": 3 },
+                    { "course": "BIOL054 HM", "title": "Experimental Biology Laboratory", "credits": 1 },
+                    { "course": "BIOL154 HM", "title": "Biostatistics", "credits": 3 },
+                    { "course": "BIOL111 HM", "title": "Molecular and Cellular Biology Laboratory", "credits": 3 },
+                    { "course": "BIOL113 HM", "title": "Molecular Genetics", "credits": 3 },
+                    { "course": "CHEM103 HM", "title": "Chemical Analysis", "credits": 3, "alternatives": ["CHEM104 HM"] },
+                    { "course": "BIOL182 HM", "title": "Biochemistry", "credits": 3, "alternatives": ["CHEM182 HM"] },
+                    { "course": "BIOL189 HM", "title": "Topics in Biochemistry and Molecular Biology", "credits": 3, "alternatives": ["CHEM189 HM"] },
+                    { "course": "BIOL101 HM", "title": "Comparative Physiology (pick one)", "credits": 3, "alternatives": ["BIOL108 HM", "BIOL109 HM"] },
+                    { "course": "BIOL193 HM", "title": "Senior Thesis Research", "credits": 3, "alternatives": ["BIOL195 HM", "CHEM151 HM"] },
+                    { "course": "BIOL191 HM", "title": "Biology Colloquium", "credits": 0 },
+                    { "course": "CHEM199 HM", "title": "Chemistry Seminar", "credits": 0 }
+                ],
+                "electives": {
+                    "description": "Two chemistry laboratory electives from: CHEM053, CHEM109, CHEM110, CHEM111, BIOL184/CHEM184. Plus 3 credits of upper-level biology electives.",
+                    "coursesRequired": 3,
+                    "tagValue": "joint-chem-bio-elective"
+                }
+            }
+        },
+        "joint_cs_physics": {
+            "name": "Joint Computer Science and Physics",
+            "departments": ["Computer Science", "Physics"],
+            "major_courses": {
+                "required": [
+                    { "course": "CSCI060 HM", "title": "Principles of Computer Science", "credits": 3, "alternatives": ["CSCI042 HM"] },
+                    { "course": "CSCI070 HM", "title": "Data Structures and Program Development", "credits": 3 },
+                    { "course": "CSCI081 HM", "title": "Computability and Logic", "credits": 3, "alternatives": ["CSCI105 HM"] },
+                    { "course": "CSCI140 HM", "title": "Algorithms", "credits": 3 },
+                    { "course": "MATH055 HM", "title": "Discrete Mathematics", "credits": 3 },
+                    { "course": "MATH082 HM", "title": "Differential Equations", "credits": 3 },
+                    { "course": "PHYS051 HM", "title": "Electromagnetic Theory and Optics", "credits": 3 },
+                    { "course": "PHYS052 HM", "title": "Quantum Physics", "credits": 3 },
+                    { "course": "PHYS054 HM", "title": "Modern Physics Laboratory", "credits": 1 },
+                    { "course": "PHYS064 HM", "title": "Mathematical and Computational Methods for Physicists", "credits": 3 },
+                    { "course": "PHYS084 HM", "title": "Quantum Information", "credits": 3, "alternatives": ["PHYS116 HM"] },
+                    { "course": "PHYS111 HM", "title": "Theoretical Mechanics", "credits": 3 },
+                    { "course": "PHYS117 HM", "title": "Statistical Mechanics and Thermodynamics", "credits": 3 },
+                    { "course": "PHYS133 HM", "title": "Electronics Laboratory", "credits": 3, "alternatives": ["PHYS134 HM"] },
+                    { "course": "CSCI183 HM", "title": "CS Clinic I (or Physics Clinic/Thesis)", "credits": 3, "alternatives": ["PHYS193 HM", "PHYS199 HM"] },
+                    { "course": "CSCI195 HM", "title": "Computer Science Colloquium", "credits": 0 },
+                    { "course": "PHYS195 HM", "title": "Physics Colloquium", "credits": 0 }
+                ],
+                "electives": {
+                    "description": "One 3-credit CS elective (100+) and one physics/CS elective (PHYS170 or 3-credit CS course).",
+                    "coursesRequired": 2,
+                    "tagValue": "joint-cs-physics-elective"
+                }
+            }
+        },
+        "mathematical_and_computational_biology": {
+            "name": "Mathematical and Computational Biology",
+            "departments": ["Mathematics", "Biology", "Computer Science"],
+            "major_courses": {
+                "required": [
+                    { "course": "BIOL054 HM", "title": "Experimental Biology Laboratory", "credits": 1 },
+                    { "course": "BIOL154 HM", "title": "Biostatistics", "credits": 3 },
+                    { "course": "MATH055 HM", "title": "Discrete Mathematics", "credits": 3 },
+                    { "course": "MATH082 HM", "title": "Differential Equations", "credits": 3 },
+                    { "course": "MCBI118A HM", "title": "Introduction to Mathematical Biology", "credits": 3 },
+                    { "course": "MCBI118B HM", "title": "Introduction to Computational Biology", "credits": 3 },
+                    { "course": "BIOL101 HM", "title": "Comparative Physiology (pick two from BIOL101/108/109/113)", "credits": 3, "alternatives": ["BIOL108 HM", "BIOL109 HM", "BIOL113 HM"] },
+                    { "course": "BIOL119 HM", "title": "Advanced Mathematical Biology", "credits": 3, "alternatives": ["MATH119 HM", "BIOL188 HM"] },
+                    { "course": "BIOL191 HM", "title": "Biology Colloquium", "credits": 0 },
+                    { "course": "MATH198 HM", "title": "Undergraduate Mathematics Forum", "credits": 0 },
+                    { "course": "MCBI199 HM", "title": "Math/Computational Biology Colloquium", "credits": 0 }
+                ],
+                "electives": {
+                    "description": "One 3-credit math course, one 3-credit CS course, five additional math/CS credits, one biology seminar, one biology laboratory, one 3-credit technical elective, and a 2-semester capstone (thesis or clinic).",
+                    "coursesRequired": 6,
+                    "tagValue": "mcb-elective"
+                }
+            }
+        }
+    }
+}

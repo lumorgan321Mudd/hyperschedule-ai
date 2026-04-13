@@ -15,14 +15,16 @@ try {
         await loadStaticSections();
     }
 
-    const server = app.listen(8080, () => {
+    const port = parseInt(process.env.PORT ?? "8080", 10);
+    const server = app.listen(port, () => {
         logger.info(`Server listening on %O`, server.address());
     });
 } catch (e) {
     logger.info(`MongoDB unavailable, falling back to static data...`);
     try {
         await loadStaticSections();
-        const server = app.listen(8080, () => {
+        const port = parseInt(process.env.PORT ?? "8080", 10);
+        const server = app.listen(port, () => {
             logger.info(
                 `Server listening on %O (static mode)`,
                 server.address(),

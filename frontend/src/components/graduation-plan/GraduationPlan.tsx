@@ -276,18 +276,20 @@ export default memo(function GraduationPlan() {
                         >
                             + Plan
                         </button>
-                        <button
-                            className={classNames(
-                                AppCss.defaultButton,
-                                Css.createButton,
-                                Css.createHsaButton,
-                            )}
-                            onClick={() =>
-                                setPopup({ option: PopupOption.CreateHsaBlock })
-                            }
-                        >
-                            + HSA Plan
-                        </button>
+                        {server.school === APIv4.School.HMC && (
+                            <button
+                                className={classNames(
+                                    AppCss.defaultButton,
+                                    Css.createButton,
+                                    Css.createHsaButton,
+                                )}
+                                onClick={() =>
+                                    setPopup({ option: PopupOption.CreateHsaBlock })
+                                }
+                            >
+                                + HSA Plan
+                            </button>
+                        )}
                     </div>
                 </div>
                 <div className={Css.blockList}>

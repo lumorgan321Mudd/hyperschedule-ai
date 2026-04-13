@@ -14,30 +14,47 @@ export const devLoginApp = new App({ settings: { xPoweredBy: false } });
 
 // GET handler serves a simple login page
 devLoginApp.get("/dev-login", (request, response) => {
-    if (process.env.NODE_ENV === "production") {
+    if (process.env.NODE_ENV === "production" && !process.env.ENABLE_DEV_LOGIN) {
         return response.status(404).send("Not found");
     }
     response.header("Content-Type", "text/html").send(`<!DOCTYPE html>
-<html><head><title>Dev Login</title></head><body style="font-family:sans-serif;max-width:400px;margin:40px auto">
+<html><head><title>Dev Login</title>
+<style>
+body{font-family:sans-serif;max-width:420px;margin:40px auto;padding:0 16px}
+label{display:block;margin-bottom:12px;font-weight:600;font-size:14px}
+label>*{font-weight:400}
+input,select{width:100%;padding:6px 8px;margin-top:4px;font-size:14px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box}
+button{padding:10px 28px;font-size:14px;cursor:pointer;background:#2563eb;color:#fff;border:none;border-radius:4px}
+button:hover{background:#1d4ed8}
+.hint{font-size:12px;color:#666;margin-top:2px}
+</style></head><body>
 <h2>Hyperschedule Dev Login</h2>
-<form id="f"><label>Email:<br><input name="eppn" value="student@hmc.edu" style="width:100%"></label><br><br>
-<label>College:<br><select name="org" style="width:100%">
+<form id="f">
+<label>Email:<input name="eppn" value="student@hmc.edu"></label>
+<label>College:<select name="org">
 <option>Harvey Mudd College</option><option>Pomona College</option>
 <option>Claremont McKenna College</option><option>Scripps College</option>
-<option>Pitzer College</option></select></label><br><br>
-<label>Role (optional):<br><select name="role" style="width:100%">
+<option>Pitzer College</option></select></label>
+<label>Class Year:<select name="classYear">
+${APIv4.SUPPORTED_CLASS_YEARS.map(
+        (y) =>
+            `<option value="${y}"${y === APIv4.SUPPORTED_CLASS_YEARS[APIv4.SUPPORTED_CLASS_YEARS.length - 1] ? " selected" : ""}>Class of ${y} (${APIv4.CLASS_YEAR_TO_CATALOG[y]} catalog)</option>`,
+    ).join("")}
+</select>
+<div class="hint">Determines which catalog year your graduation requirements use.</div></label>
+<label>Role (optional):<select name="role">
 <option value="">—</option><option value="student">Student</option>
-<option value="advisor">Advisor</option></select></label><br><br>
-<button type="submit" style="padding:8px 24px">Log In</button></form>
+<option value="advisor">Advisor</option></select></label>
+<button type="submit">Log In</button></form>
 <script>document.getElementById('f').onsubmit=async e=>{e.preventDefault();
 const d=new FormData(e.target),p=new URLSearchParams();
 d.forEach((v,k)=>{if(v)p.set(k,v)});
 await fetch('/auth/dev-login?'+p,{method:'POST',credentials:'include'});
-window.location=new URLSearchParams(window.location.search).get('redirect')||'http://localhost:3000/'}</script></body></html>`);
+window.location=new URLSearchParams(window.location.search).get('redirect')||'/'}</script></body></html>`);
 });
 
 devLoginApp.post("/dev-login", async (request, response) => {
-    if (process.env.NODE_ENV === "production") {
+    if (process.env.NODE_ENV === "production" && !process.env.ENABLE_DEV_LOGIN) {
         return response.status(404).send("Not found");
     }
 
@@ -46,6 +63,8 @@ devLoginApp.post("/dev-login", async (request, response) => {
     const role = (request.query.role as string) ?? undefined;
     const orgName =
         (request.query.org as string) ?? "Harvey Mudd College";
+    const classYearStr = request.query.classYear as string | undefined;
+    const classYear = classYearStr ? parseInt(classYearStr, 10) : undefined;
 
     let school: APIv4.School = APIv4.School.Unknown;
     switch (orgName) {
@@ -80,6 +99,10 @@ devLoginApp.post("/dev-login", async (request, response) => {
 
         if (existingUser) {
             userId = existingUser._id;
+            // Update school, classYear, and role if changed
+            existingUser.school = school;
+            if (classYear) existingUser.classYear = classYear;
+            if (role) existingUser.role = role as APIv4.UserRole;
             logger.info(`Found existing static user ${userId} for ${eppn}`);
         } else {
             userId = uuid4("u");
@@ -95,6 +118,7 @@ devLoginApp.post("/dev-login", async (request, response) => {
                         sections: [],
                     },
                 },
+                ...(classYear ? { classYear } : {}),
                 ...(role ? { role: role as APIv4.UserRole } : {}),
             };
             staticUsers.set(userId, user);

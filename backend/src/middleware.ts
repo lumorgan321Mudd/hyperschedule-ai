@@ -75,6 +75,20 @@ export function middleware(
                 res.header("Access-Control-Allow-Credentials", "true");
                 res.header("Vary", "Origin");
                 break;
+            default:
+                // Allow Railway domains and any custom domain set via env
+                if (
+                    parsed.hostname.endsWith(".railway.app") ||
+                    parsed.hostname.endsWith(".up.railway.app")
+                ) {
+                    res.header(
+                        "Access-Control-Allow-Origin",
+                        parsed.origin,
+                    );
+                    res.header("Access-Control-Allow-Credentials", "true");
+                    res.header("Vary", "Origin");
+                }
+                break;
         }
     }
 
