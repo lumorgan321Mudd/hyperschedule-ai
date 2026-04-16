@@ -16,7 +16,7 @@ COPY backend/ backend/
 COPY frontend/ frontend/
 COPY data/ data/
 
-# Build frontend
+# Build frontend (PostCSS config required for CSS nesting/media queries)
 RUN pnpm --filter hyperschedule-frontend run prod
 
 # Runtime
