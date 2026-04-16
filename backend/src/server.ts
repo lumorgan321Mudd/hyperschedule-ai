@@ -40,8 +40,13 @@ if (existsSync(FRONTEND_DIST)) {
         if (req.path !== "/" && existsSync(filePath)) {
             const ext = extname(filePath);
             const mime = MIME_TYPES[ext] ?? "application/octet-stream";
+            // Files with content hash in name can be cached forever; others get short cache
+            const hasHash = /\-[a-zA-Z0-9]{8,}\.\w+$/.test(req.path);
+            const cacheControl = hasHash
+                ? "public,max-age=31536000,immutable"
+                : "public,max-age=60";
             res.header("Content-Type", mime)
-                .header("Cache-Control", "public,max-age=31536000,immutable")
+                .header("Cache-Control", cacheControl)
                 .send(readFileSync(filePath));
         } else if (indexHtml) {
             // SPA fallback

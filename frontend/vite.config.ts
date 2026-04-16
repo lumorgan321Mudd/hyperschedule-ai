@@ -61,7 +61,7 @@ function generateCssClassName(classname: string, filename: string) {
 
     const arr = new Uint32Array(1);
     arr[0] = n;
-    const s = Buffer.from(arr).toString("base64url");
+    const s = Buffer.from(arr.buffer).toString("base64url");
     if (s.match(/^\d/)) return "_" + s;
     return s;
 }
@@ -107,8 +107,8 @@ export default defineConfig(({ command, mode }) => {
                     sw: "src/service-worker/sw.ts",
                 },
                 output: {
-                    entryFileNames: "[name].js",
-                    assetFileNames: "[name].[ext]",
+                    entryFileNames: "[name]-[hash].js",
+                    assetFileNames: "[name]-[hash].[ext]",
                 },
             },
             copyPublicDir: false,
