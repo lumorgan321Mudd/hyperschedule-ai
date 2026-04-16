@@ -137,7 +137,7 @@ devLoginApp.post("/dev-login", async (request, response) => {
     return response
         .cookie(AUTH_TOKEN_COOKIE_NAME, sig, {
             domain: COOKIE_DOMAIN,
-            secure: false,
+            secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
             expires,
         })

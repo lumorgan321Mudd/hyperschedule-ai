@@ -1,81 +1,75 @@
 .loginBox {
     height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
-    & p,
-    h4 {
-        margin: 0;
-    }
+.loginForm {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75em;
+    width: 100%;
+    max-width: 20em;
+    padding: 1em;
+}
 
-    .button {
-        height: 2em;
-    }
+.formTitle {
+    margin: 0 0 0.25em;
+    font-size: 1.1em;
+    text-align: center;
+}
 
-    & .login {
-        grid-template-areas: "header" "button" "list" "footer";
-        grid-template-rows: 1.5em 2.5em auto 2em;
-    }
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+    font-size: 0.875em;
+    font-weight: 600;
+}
 
-    & .guest {
-        grid-template-areas: "button" "list";
-        grid-template-rows: 2.5em auto 1fr;
-    }
+.input {
+    font-size: 0.875em;
+    padding: 0.375em 0.5em;
+    border: 1px solid var(--bg-2);
+    border-radius: 0.25em;
+    background-color: var(--bg-0);
+    color: var(--fg-0);
+    font-family: inherit;
+}
 
-    & .login,
-    & .guest {
-        display: grid;
-        grid-row-gap: 0.25em;
-        align-items: center;
+.input:focus {
+    outline: 2px solid var(--hbg);
+    outline-offset: -1px;
+}
 
-        @media (--medium-and-up) {
-            grid-template-areas: "header" "button" "list" "footer";
-            grid-template-rows: 1.5em 2.5em 1fr 2em;
-        }
+.error {
+    margin: 0;
+    color: var(--palette-red);
+    font-size: 0.8em;
+    text-align: center;
+}
 
-        & .button {
-            grid-area: button;
-        }
+.actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+    margin-top: 0.25em;
+}
 
-        & .reasons {
-            grid-area: list;
+.loginButton {
+    height: 2.25em;
+    font-weight: 600;
+}
 
-            display: grid;
-            grid-template-columns: 1em auto;
-            grid-template-rows: repeat(4, 3em);
-            align-items: center;
-            grid-column-gap: 0.5em;
+.guestButton {
+    height: 2em;
+    background: none !important;
+    border-color: var(--bg-2) !important;
+    color: var(--fg-2) !important;
+    font-size: 0.85em;
 
-            & svg {
-                grid-column: 1;
-                width: 1em;
-                height: 1em;
-            }
-
-            & span {
-                grid-column: 2;
-            }
-
-            h4 {
-                text-align: center;
-                grid-column: 1 / -1;
-            }
-        }
-    }
-
-    & .login {
-        & .reasons svg {
-            color: var(--palette-green);
-        }
-    }
-
-    & .guest {
-        & .reasons svg {
-            color: var(--palette-red);
-        }
-    }
-
-    & .footnote {
-        grid-area: footer;
-        font-size: 0.75rem;
-        align-self: self-end;
+    &:hover {
+        background-color: var(--bg-1) !important;
     }
 }
