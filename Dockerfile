@@ -22,6 +22,8 @@ RUN pnpm --filter hyperschedule-frontend run prod
 # Runtime
 ENV NODE_ENV=production
 ENV PORT=8080
+ENV PROCESS_NAME=hyperschedule-server
+RUN mkdir -p /var/log/hyperschedule
 EXPOSE 8080
 
 WORKDIR /app/backend
