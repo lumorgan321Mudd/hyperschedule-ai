@@ -3,7 +3,7 @@ RUN corepack enable && corepack prepare pnpm@10.13.1 --activate
 WORKDIR /app
 
 # Install dependencies (NODE_ENV not set yet so devDependencies are included)
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig-base.json ./
 COPY shared/package.json shared/
 COPY backend/package.json backend/
 COPY frontend/package.json frontend/
