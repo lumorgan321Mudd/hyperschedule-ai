@@ -118,7 +118,7 @@ accountApp
             return response.status(400).json({ error: "Invalid request" });
         }
         const { username, password } = parsed.data;
-        const user = await getUserByUsername(username);
+        const user = await getUserByUsername(username.toLowerCase());
         if (user === null || !user.passwordHash) {
             return response
                 .status(401)
