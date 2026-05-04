@@ -251,7 +251,7 @@ const StudentGraduationRequirements = memo(function StudentGraduationRequirement
 
     const addSectionInfo = (s: {
         section: APIv4.SectionIdentifier;
-        attrs: { requirementTags?: string[] };
+        attrs: { requirementTags?: string[]; selected?: boolean };
     }, targetSet: Set<string>) => {
         const code = APIv4.stringifyCourseCode(s.section);
         const baseKey = courseBaseKey(code);
@@ -275,9 +275,14 @@ const StudentGraduationRequirements = memo(function StudentGraduationRequirement
 
     // Always include every course the student has added to any schedule —
     // switching the active/checked schedule should never make courses disappear.
+    // Sections with the schedule checkbox unchecked (attrs.selected === false)
+    // are excluded since the user has explicitly opted them out.
     if (checkAgainst !== "") {
         for (const schedule of Object.values(schedules)) {
-            for (const s of schedule.sections) addSectionInfo(s, completedCourses);
+            for (const s of schedule.sections) {
+                if (s.attrs.selected === false) continue;
+                addSectionInfo(s, completedCourses);
+            }
         }
     }
     // When a specific block is selected, also include its sections.
@@ -288,7 +293,10 @@ const StudentGraduationRequirements = memo(function StudentGraduationRequirement
             const isHsa = block.planType === "hsa";
             for (const sem of Object.values(block.semesters)) {
                 if (isHsa && sem.name === "Alternatives") continue;
-                for (const s of sem.sections) addSectionInfo(s, completedCourses);
+                for (const s of sem.sections) {
+                    if (s.attrs.selected === false) continue;
+                    addSectionInfo(s, completedCourses);
+                }
             }
         }
     }
