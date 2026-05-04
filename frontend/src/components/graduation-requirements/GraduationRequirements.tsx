@@ -264,6 +264,14 @@ const StudentGraduationRequirements = memo(function StudentGraduationRequirement
         }
     };
 
+    // Always include every course the student has added to any schedule —
+    // switching the active/checked schedule should never make courses disappear.
+    if (checkAgainst !== "") {
+        for (const schedule of Object.values(schedules)) {
+            for (const s of schedule.sections) addSectionInfo(s, completedCourses);
+        }
+    }
+    // When a specific block is selected, also include its sections.
     if (checkAgainst.startsWith("block:")) {
         const blockId = checkAgainst.slice(6);
         const block = graduationBlocks[blockId];
@@ -273,16 +281,6 @@ const StudentGraduationRequirements = memo(function StudentGraduationRequirement
                 if (isHsa && sem.name === "Alternatives") continue;
                 for (const s of sem.sections) addSectionInfo(s, completedCourses);
             }
-        }
-    } else if (checkAgainst.startsWith("schedule:")) {
-        const scheduleId = checkAgainst.slice(9);
-        const schedule = schedules[scheduleId];
-        if (schedule) {
-            for (const s of schedule.sections) addSectionInfo(s, completedCourses);
-        }
-    } else if (checkAgainst === "all-schedules") {
-        for (const schedule of Object.values(schedules)) {
-            for (const s of schedule.sections) addSectionInfo(s, completedCourses);
         }
     }
 
