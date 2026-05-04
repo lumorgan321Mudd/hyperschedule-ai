@@ -58,8 +58,12 @@ function setAuthCookie(response: Response, userId: string) {
 }
 
 function clearAuthCookie(response: Response) {
+    // Match the attributes used when setting so the browser overwrites it.
     response.cookie(AUTH_TOKEN_COOKIE_NAME, "", {
         domain: COOKIE_DOMAIN,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
         maxAge: 0,
     });
 }

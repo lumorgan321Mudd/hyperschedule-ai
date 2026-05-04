@@ -36,7 +36,18 @@ function logoutLocal() {
     window.location.reload();
 }
 
-function logout() {
+async function logout() {
+    // Server-side logout clears the cookie with the correct domain; relying
+    // on a hardcoded client domain breaks on hosts other than hyperschedule.io.
+    try {
+        await fetch(`${__API_URL__}/auth/logout`, {
+            method: "POST",
+            credentials: "include",
+        });
+    } catch {
+        // ignore network errors — fall through to client-side cleanup
+    }
+    Cookies.remove(AUTH_TOKEN_COOKIE_NAME);
     Cookies.remove(AUTH_TOKEN_COOKIE_NAME, {
         path: "",
         domain: AUTH_COOKIE_DOMAIN,
