@@ -271,29 +271,18 @@ const StudentGraduationRequirements = memo(function StudentGraduationRequirement
             const isHsa = block.planType === "hsa";
             for (const sem of Object.values(block.semesters)) {
                 if (isHsa && sem.name === "Alternatives") continue;
-                const isTaken = isHsa
-                    ? sem.name === "Taken"
-                    : termIsBefore(sem.term, CURRENT_TERM);
-                const targetSet = isTaken ? completedCourses : proposedCourses;
-                for (const s of sem.sections) addSectionInfo(s, targetSet);
+                for (const s of sem.sections) addSectionInfo(s, completedCourses);
             }
         }
     } else if (checkAgainst.startsWith("schedule:")) {
         const scheduleId = checkAgainst.slice(9);
         const schedule = schedules[scheduleId];
         if (schedule) {
-            // Schedules are current term — treat as proposed
-            const isPast = termIsBefore(schedule.term, CURRENT_TERM);
-            const targetSet = isPast ? completedCourses : proposedCourses;
-            for (const s of schedule.sections) addSectionInfo(s, targetSet);
+            for (const s of schedule.sections) addSectionInfo(s, completedCourses);
         }
     } else if (checkAgainst === "all-schedules") {
-        // Aggregate all sections across every user schedule.
-        // Past terms count as completed; current/future as proposed.
         for (const schedule of Object.values(schedules)) {
-            const isPast = termIsBefore(schedule.term, CURRENT_TERM);
-            const targetSet = isPast ? completedCourses : proposedCourses;
-            for (const s of schedule.sections) addSectionInfo(s, targetSet);
+            for (const s of schedule.sections) addSectionInfo(s, completedCourses);
         }
     }
 
