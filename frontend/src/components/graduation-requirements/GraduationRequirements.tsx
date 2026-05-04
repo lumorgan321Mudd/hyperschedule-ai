@@ -133,43 +133,52 @@ const StudentGraduationRequirements = memo(function StudentGraduationRequirement
     // Section lookups for area-code-based requirement matching (HSA, PE)
     const activeSectionsLookup = useActiveSectionsLookup();
 
-    // Collect terms from selected graduation block for multi-term lookup
-    const blockTerms = useMemo(() => {
-        if (!checkAgainst.startsWith("block:")) return [];
-        const blockId = checkAgainst.slice(6);
-        const block = graduationBlocks[blockId];
-        if (!block) return [];
+    // Collect terms from selected graduation block + all user schedules so
+    // area-code-based matching (electives/breadth) works for courses across
+    // any term, not just the active one.
+    const extraTerms = useMemo(() => {
         const terms: APIv4.TermIdentifier[] = [];
         const seen = new Set<string>();
-        for (const sem of Object.values(block.semesters)) {
-            const key = `${sem.term.year}${sem.term.term}`;
+        const addTerm = (term: APIv4.TermIdentifier) => {
+            const key = `${term.year}${term.term}`;
             if (!seen.has(key)) {
                 seen.add(key);
-                terms.push(sem.term);
+                terms.push(term);
+            }
+        };
+        if (checkAgainst.startsWith("block:")) {
+            const block = graduationBlocks[checkAgainst.slice(6)];
+            if (block) {
+                for (const sem of Object.values(block.semesters)) {
+                    addTerm(sem.term);
+                }
             }
         }
+        for (const schedule of Object.values(schedules)) {
+            addTerm(schedule.term);
+        }
         return terms;
-    }, [checkAgainst, graduationBlocks]);
+    }, [checkAgainst, graduationBlocks, schedules]);
 
-    const blockSectionsData = useSectionsForTermsQuery(
-        blockTerms.length > 0,
-        blockTerms,
+    const extraSectionsData = useSectionsForTermsQuery(
+        extraTerms.length > 0,
+        extraTerms,
     );
 
-    // Unified section lookup combining active term + block term sections
+    // Unified section lookup combining active term + extra (block/schedule) terms
     const sectionsLookup = useMemo(() => {
         const lookup = new Map<string, APIv4.Section>();
         for (const [key, section] of activeSectionsLookup) {
             lookup.set(key, section);
         }
-        if (blockSectionsData.data) {
-            for (const section of blockSectionsData.data) {
+        if (extraSectionsData.data) {
+            for (const section of extraSectionsData.data) {
                 const key = APIv4.stringifySectionCodeLong(section.identifier);
                 if (!lookup.has(key)) lookup.set(key, section);
             }
         }
         return lookup;
-    }, [activeSectionsLookup, blockSectionsData.data]);
+    }, [activeSectionsLookup, extraSectionsData.data]);
 
     // Fetch school list
     useEffect(() => {
