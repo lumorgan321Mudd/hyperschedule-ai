@@ -15,6 +15,7 @@ import {
 } from "../../db/models/graduation-block";
 import { createSnapshot, getSnapshotsForStudent, deleteSnapshot } from "../../db/models/shared-snapshot";
 import { getUser } from "../../db/models/user";
+import { studentHasAcceptedAdvisorByEmail } from "../../db/models/advisor-link";
 import { createLogger } from "../../logger";
 
 const logger = createLogger("routes.graduation-blocks");
@@ -327,10 +328,20 @@ graduationBlocksApp.post(
         if (!block)
             return response.status(404).send("Block not found");
 
+        const linked = await studentHasAcceptedAdvisorByEmail(
+            user._id,
+            input.data.advisorEmail,
+        );
+        if (!linked) {
+            return response.status(403).json({
+                error: "You must have an accepted link with this advisor before sharing.",
+            });
+        }
+
         // Create immutable snapshot (deep-copy semesters so edits don't mutate the snapshot)
         const snapshotId = await createSnapshot({
             studentUserId: user._id,
-            studentEppn: user.eppn,
+            studentEppn: user.email ?? user.eppn ?? "",
             studentSchool: user.school,
             advisorEmail: input.data.advisorEmail,
             blockName: block.name,

@@ -694,3 +694,131 @@ export async function getUserByEppn(
 
     return collections.users.findOne({ eppn });
 }
+
+export async function getUserByUsername(
+    username: string,
+): Promise<APIv4.ServerUser | null> {
+    const lc = username.toLowerCase();
+    if (staticMode) {
+        for (const user of staticUsers.values()) {
+            if (user.username === lc) return user;
+        }
+        return null;
+    }
+    return collections.users.findOne({ username: lc });
+}
+
+export async function getUserByEmail(
+    email: string,
+): Promise<APIv4.ServerUser | null> {
+    const lc = email.toLowerCase();
+    if (staticMode) {
+        for (const user of staticUsers.values()) {
+            if (user.email === lc) return user;
+        }
+        return null;
+    }
+    return collections.users.findOne({ email: lc });
+}
+
+export async function createUserWithPassword(args: {
+    username: string;
+    email: string;
+    passwordHash: string;
+    school: APIv4.School;
+    classYear?: number;
+    role?: APIv4.UserRole;
+}): Promise<APIv4.UserId> {
+    const userId = uuid4("u");
+    const scheduleId = uuid4("s");
+    const user: APIv4.ServerUser = {
+        _id: userId,
+        username: args.username.toLowerCase(),
+        email: args.email.toLowerCase(),
+        passwordHash: args.passwordHash,
+        school: args.school,
+        ...(args.classYear !== undefined ? { classYear: args.classYear } : {}),
+        ...(args.role !== undefined ? { role: args.role } : {}),
+        schedules: {
+            [scheduleId]: {
+                term: CURRENT_TERM,
+                name: "Schedule 1",
+                sections: [],
+            },
+        },
+    };
+
+    if (staticMode) {
+        staticUsers.set(userId, user);
+        logger.info(`Created static user ${userId} (${args.username})`);
+        return userId;
+    }
+
+    const res = await collections.users.insertOne(user);
+    if (res.insertedId.toString() !== userId) {
+        throw Error("Database error: mismatching insertion id");
+    }
+    logger.info(`Created user ${userId} (${args.username})`);
+    return userId;
+}
+
+export async function setUserPassword(
+    userId: APIv4.UserId,
+    passwordHash: string,
+): Promise<void> {
+    if (staticMode) {
+        const user = staticUsers.get(userId);
+        if (!user) throw Error("User not found");
+        user.passwordHash = passwordHash;
+        delete user.passwordResetTokenHash;
+        delete user.passwordResetExpiry;
+        return;
+    }
+    await collections.users.updateOne(
+        { _id: userId },
+        {
+            $set: { passwordHash },
+            $unset: { passwordResetTokenHash: "", passwordResetExpiry: "" },
+        },
+    );
+}
+
+export async function setPasswordResetToken(
+    userId: APIv4.UserId,
+    tokenHash: string,
+    expiry: Date,
+): Promise<void> {
+    if (staticMode) {
+        const user = staticUsers.get(userId);
+        if (!user) throw Error("User not found");
+        user.passwordResetTokenHash = tokenHash;
+        user.passwordResetExpiry = expiry.toISOString();
+        return;
+    }
+    await collections.users.updateOne(
+        { _id: userId },
+        {
+            $set: {
+                passwordResetTokenHash: tokenHash,
+                passwordResetExpiry: expiry.toISOString(),
+            },
+        },
+    );
+}
+
+export async function setUserAdvisorEmail(
+    userId: APIv4.UserId,
+    advisorEmail: string,
+): Promise<void> {
+    const lc = advisorEmail.toLowerCase();
+    if (staticMode) {
+        const user = staticUsers.get(userId);
+        if (!user) throw Error("User not found");
+        user.advisorEmail = lc;
+        return;
+    }
+    await collections.users.updateOne(
+        { _id: userId },
+        { $set: { advisorEmail: lc } },
+    );
+}

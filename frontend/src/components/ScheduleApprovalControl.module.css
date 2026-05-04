@@ -1,0 +1,126 @@
+.container {
+    grid-area: approval;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375em;
+    padding: 0.375em 0.5em;
+    border-top: 1px solid var(--bg-2);
+    font-size: 0.85em;
+}
+
+.statusRow {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    flex-wrap: wrap;
+}
+
+.advisorsRow {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    justify-content: space-between;
+}
+
+.label {
+    color: var(--fg-1);
+    font-weight: 600;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    padding: 0.125em 0.5em;
+    border-radius: 1em;
+    font-size: 0.85em;
+    font-weight: 600;
+
+    &.approved {
+        background-color: var(--palette-green);
+        color: white;
+    }
+
+    &.rejected {
+        background-color: var(--palette-red);
+        color: white;
+    }
+
+    &.pending {
+        background-color: var(--bg-2);
+        color: var(--fg-0);
+    }
+
+    &.none {
+        background-color: transparent;
+        color: var(--fg-2);
+        border: 1px solid var(--bg-2);
+    }
+}
+
+.actionButton {
+    font-size: 0.85em;
+    padding: 0.25em 0.625em;
+    margin-left: auto;
+}
+
+.withdrawButton {
+    background: none !important;
+    border: 1px solid var(--bg-2) !important;
+    color: var(--fg-2) !important;
+}
+
+.cancelButton {
+    background: none !important;
+    border: 1px solid var(--bg-2) !important;
+    color: var(--fg-2) !important;
+}
+
+.comment {
+    font-size: 0.85em;
+    color: var(--fg-1);
+    background-color: var(--bg-1);
+    padding: 0.375em 0.5em;
+    border-radius: 0.25em;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375em;
+}
+
+.input {
+    font-size: 0.875em;
+    padding: 0.375em 0.5em;
+    border: 1px solid var(--bg-2);
+    border-radius: 0.25em;
+    background-color: var(--bg-0);
+    color: var(--fg-0);
+    font-family: inherit;
+}
+
+.formActions {
+    display: flex;
+    gap: 0.375em;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.noAdvisorsHint {
+    font-size: 0.85em;
+    color: var(--fg-1);
+    margin: 0;
+}
+
+.linkButton {
+    background: none;
+    border: none;
+    color: var(--hbg);
+    font-size: 0.8em;
+    cursor: pointer;
+    font-family: inherit;
+    text-decoration: underline;
+    padding: 0;
+    margin-right: auto;
+}

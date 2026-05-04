@@ -80,3 +80,82 @@ export function useOfferingHistory(
         refetchInterval: 24 * 60 * 60 * 1000,
     });
 }
+
+export interface TagOption {
+    value: string;
+    label: string;
+    group: string;
+}
+
+interface SchoolReqData {
+    general_requirements?: Array<{
+        name?: string;
+        subCategories?: Array<{ tagValue?: string; name?: string }>;
+    }>;
+    majors?: Record<
+        string,
+        {
+            name: string;
+            major_courses?: {
+                electives?: { tagValue?: string; description?: string };
+            };
+        }
+    >;
+}
+
+function humanizeTag(tag: string): string {
+    return tag
+        .split("-")
+        .map((w) => (w.length <= 3 ? w.toUpperCase() : w[0]!.toUpperCase() + w.slice(1)))
+        .join(" ");
+}
+
+export function useSchoolTagOptions(
+    schoolCode: string | undefined,
+    catalogYear: string | undefined,
+): UseQueryResult<TagOption[]> {
+    return useQuery({
+        queryKey: ["school tags", schoolCode, catalogYear] as const,
+        enabled: !!schoolCode && !!catalogYear,
+        staleTime: 24 * 60 * 60 * 1000,
+        gcTime: 24 * 60 * 60 * 1000,
+        queryFn: async () => {
+            const res = await fetch(
+                `${__API_URL__}/v4/major-requirements/${schoolCode}/${catalogYear}`,
+                { cache: "no-cache" },
+            );
+            if (!res.ok) return [];
+            const data: SchoolReqData = await res.json();
+            const seen = new Set<string>();
+            const options: TagOption[] = [];
+
+            for (const group of data.general_requirements ?? []) {
+                for (const sub of group.subCategories ?? []) {
+                    if (sub.tagValue && !seen.has(sub.tagValue)) {
+                        seen.add(sub.tagValue);
+                        const groupName = group.name ?? "General";
+                        options.push({
+                            value: sub.tagValue,
+                            label: sub.name ?? humanizeTag(sub.tagValue),
+                            group: groupName,
+                        });
+                    }
+                }
+            }
+
+            for (const [, major] of Object.entries(data.majors ?? {})) {
+                const electives = major.major_courses?.electives;
+                if (electives?.tagValue && !seen.has(electives.tagValue)) {
+                    seen.add(electives.tagValue);
+                    options.push({
+                        value: electives.tagValue,
+                        label: humanizeTag(electives.tagValue),
+                        group: `${major.name} Electives`,
+                    });
+                }
+            }
+
+            return options;
+        },
+    });
+}

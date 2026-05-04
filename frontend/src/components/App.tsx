@@ -54,6 +54,14 @@ export default function App() {
     }, [server]);
 
     React.useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get("reset-token");
+        if (token) {
+            setPopup({ option: PopupOption.ResetPassword, token });
+        }
+    }, []);
+
+    React.useEffect(() => {
         if (appRef.current === null) return;
         document
             .querySelectorAll('head meta[name="theme-color"]')

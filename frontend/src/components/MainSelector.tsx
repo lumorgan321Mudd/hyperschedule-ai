@@ -4,7 +4,7 @@ import classNames from "classnames";
 
 import useStore, { MainTab } from "@hooks/store";
 import { useUserStore } from "@hooks/store/user";
-import { memo } from "react";
+import { memo, useEffect } from "react";
 
 const TAB_ORDER_STUDENT = [
     MainTab.CourseSearch,
@@ -14,10 +14,7 @@ const TAB_ORDER_STUDENT = [
 ] as const;
 
 const TAB_ORDER_ADVISOR = [
-    MainTab.CourseSearch,
-    MainTab.Schedule,
     MainTab.GradRequirements,
-    MainTab.GradPlan,
     MainTab.Advisor,
 ] as const;
 
@@ -37,6 +34,13 @@ export default memo(function MainSelector() {
     const isAdvisor = server?.role === "advisor";
     const tabs = isAdvisor ? TAB_ORDER_ADVISOR : TAB_ORDER_STUDENT;
     const activeIndex = tabs.indexOf(mainTab as any);
+
+    // If the persisted tab isn't available for this role, redirect to the first available tab.
+    useEffect(() => {
+        if (!tabs.includes(mainTab as any)) {
+            setMainTab(tabs[0]!);
+        }
+    }, [tabs, mainTab, setMainTab]);
 
     return (
         <div

@@ -5,6 +5,7 @@ import useStore from "@hooks/store";
 import { PopupOption } from "@lib/popup";
 import * as APIv4 from "hyperschedule-shared/api/v4";
 import { sectionColorStyle } from "@lib/color";
+import { schoolCodeFromEnum } from "@lib/api";
 
 import { pick } from "@lib/store";
 
@@ -15,6 +16,7 @@ import * as DndUtil from "@dnd-kit/utilities";
 import * as Feather from "react-feather";
 
 import { useUserStore } from "@hooks/store/user";
+import { useSchoolTagOptions, type TagOption } from "@hooks/api/query";
 import Css from "./SelectedList.module.css";
 import SectionStatusBadge from "@components/common/SectionStatusBadge";
 import CopyCodeSpan from "@components/common/CopyCodeSpan";
@@ -23,7 +25,7 @@ import { toast } from "react-toastify";
 import * as Schedule from "@lib/schedule";
 import classNames from "classnames";
 import { computeMuddCredits } from "@lib/credits";
-import { memo, startTransition, useState } from "react";
+import { memo, startTransition, useMemo, useState } from "react";
 
 export default memo(function SelectedList() {
     const scheduleRenderingOptions = useStore(
@@ -37,6 +39,16 @@ export default memo(function SelectedList() {
     );
     const sectionsLookup = useActiveSectionsLookup();
     const [isDragging, setIsDragging] = useState<boolean>(false);
+
+    // Load tag options for the user's school so each row can be tagged
+    // (HSA, major elective, etc.) and have it propagate to grad requirements.
+    const server = useUserStore((store) => store.server);
+    const schoolCode = server ? schoolCodeFromEnum(server.school) : undefined;
+    const catalogYear = server?.classYear
+        ? APIv4.CLASS_YEAR_TO_CATALOG[server.classYear] ?? APIv4.DEFAULT_CATALOG_YEAR
+        : APIv4.DEFAULT_CATALOG_YEAR;
+    const tagOptionsQuery = useSchoolTagOptions(schoolCode, catalogYear);
+    const tagOptions = tagOptionsQuery.data ?? [];
 
     const em = parseFloat(
         window.getComputedStyle(document.body).getPropertyValue("font-size"),
@@ -187,6 +199,7 @@ export default memo(function SelectedList() {
                                         entry={entry}
                                         scheduleId={activeScheduleId}
                                         unconflicting={unconflicting}
+                                        tagOptions={tagOptions}
                                     />
                                 );
                             })}
@@ -211,6 +224,7 @@ const SectionEntry = memo(function SectionEntry(props: {
     entry: APIv4.UserSection;
     scheduleId: APIv4.ScheduleId;
     unconflicting: boolean;
+    tagOptions: TagOption[];
 }) {
     const sectionsLookup = useActiveSectionsLookup();
     //const attrsMutation = useScheduleSectionAttrsMutation();
@@ -237,6 +251,17 @@ const SectionEntry = memo(function SectionEntry(props: {
         props.entry.attrs.selected &&
         !scheduleRenderingOptions.showConflicting &&
         !props.unconflicting;
+
+    const currentTag = props.entry.attrs.requirementTags?.[0] ?? "";
+    const groupedOptions = useMemo(() => {
+        const groups = new Map<string, TagOption[]>();
+        for (const opt of props.tagOptions) {
+            const list = groups.get(opt.group) ?? [];
+            list.push(opt);
+            groups.set(opt.group, list);
+        }
+        return Array.from(groups.entries());
+    }, [props.tagOptions]);
 
     return (
         <div
@@ -329,6 +354,38 @@ const SectionEntry = memo(function SectionEntry(props: {
                     </>
                 )}
             </div>
+
+            {props.tagOptions.length > 0 && (
+                <select
+                    className={Css.tagSelect}
+                    value={currentTag}
+                    title="Tag this course (counts toward graduation requirements)"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                        const value = e.target.value;
+                        scheduleSetSectionAttrs({
+                            section: props.entry.section,
+                            scheduleId: props.scheduleId,
+                            attrs: {
+                                selected: props.entry.attrs.selected,
+                                requirementTags: value ? [value] : [],
+                            },
+                        });
+                    }}
+                >
+                    <option value="">— tag —</option>
+                    {groupedOptions.map(([groupName, opts]) => (
+                        <optgroup key={groupName} label={groupName}>
+                            {opts.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                </option>
+                            ))}
+                        </optgroup>
+                    ))}
+                </select>
+            )}
 
             <button
                 className={Css.deleteButton}

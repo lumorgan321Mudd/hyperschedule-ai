@@ -181,6 +181,23 @@
     & .deleteButton {
         padding-left: 0.5em;
     }
+
+    & .tagSelect {
+        font-size: 0.75em;
+        padding: 0.125em 0.25em;
+        margin: 0 0.25em;
+        max-width: 7em;
+        background-color: var(--bg-0);
+        color: var(--fg-0);
+        border: 1px solid var(--bg-2);
+        border-radius: 0.25em;
+        cursor: pointer;
+        font-family: inherit;
+
+        &:hover {
+            border-color: var(--hbg);
+        }
+    }
 }
 
 .credits {

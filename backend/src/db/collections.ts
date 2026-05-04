@@ -1,5 +1,9 @@
 import type * as APIv4 from "hyperschedule-shared/api/v4";
-import type { SharedBlockSnapshot } from "hyperschedule-shared/api/v4";
+import type {
+    SharedBlockSnapshot,
+    SharedScheduleSnapshot,
+    AdvisorLink,
+} from "hyperschedule-shared/api/v4";
 import { connector } from "./connector";
 import type { Collection } from "mongodb";
 
@@ -11,6 +15,8 @@ export interface DBCollections {
     users: Collection<APIv4.ServerUser>;
     sections: Collection<DBSection>;
     sharedBlockSnapshots: Collection<SharedBlockSnapshot>;
+    sharedScheduleSnapshots: Collection<SharedScheduleSnapshot>;
+    advisorLinks: Collection<AdvisorLink>;
 }
 
 /* we use getters to defer the collection initialization to the first
@@ -39,6 +45,20 @@ Object.defineProperties(obj, {
             return connector.db.collection<SharedBlockSnapshot>(
                 "shared_block_snapshots",
             );
+        },
+    },
+    sharedScheduleSnapshots: {
+        get(): Collection<SharedScheduleSnapshot> {
+            if (!connector.connected) throw Error("Database not connected");
+            return connector.db.collection<SharedScheduleSnapshot>(
+                "shared_schedule_snapshots",
+            );
+        },
+    },
+    advisorLinks: {
+        get(): Collection<AdvisorLink> {
+            if (!connector.connected) throw Error("Database not connected");
+            return connector.db.collection<AdvisorLink>("advisor_links");
         },
     },
 });

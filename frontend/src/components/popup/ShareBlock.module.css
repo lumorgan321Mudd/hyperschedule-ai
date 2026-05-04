@@ -15,7 +15,8 @@
         font-size: 0.9rem;
     }
 
-    & input {
+    & input,
+    & select {
         padding: 0.375rem 0.5rem;
         border: 1px solid var(--bg-2);
         border-radius: 0.25rem;

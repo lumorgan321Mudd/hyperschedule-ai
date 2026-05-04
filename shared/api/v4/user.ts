@@ -42,9 +42,22 @@ export const LocalUser = z.object({
 });
 export type LocalUser = z.infer<typeof LocalUser>;
 
+export const Username = z
+    .string()
+    .min(3)
+    .max(32)
+    .regex(/^[a-z0-9_]+$/, "Username must be lowercase letters, digits, or _");
+export type Username = z.infer<typeof Username>;
+
 export const ServerUser = z.object({
     _id: UserId,
-    eppn: z.string(),
+    eppn: z.string().optional(),
+    username: Username.optional(),
+    email: z.string().email().optional(),
+    passwordHash: z.string().optional(),
+    passwordResetTokenHash: z.string().optional(),
+    passwordResetExpiry: z.string().optional(),
+    advisorEmail: z.string().email().optional(),
     school: SchoolEnum,
     classYear: z.number().optional(),
     schedules: z.record(ScheduleId, UserSchedule),
@@ -54,6 +67,35 @@ export const ServerUser = z.object({
         .optional(),
 });
 export type ServerUser = z.infer<typeof ServerUser>;
+
+export const SignupRequest = z.object({
+    username: Username,
+    email: z.string().email(),
+    password: z.string().min(8),
+    school: SchoolEnum,
+    classYear: z.number().optional(),
+    role: UserRole.optional(),
+});
+export type SignupRequest = z.infer<typeof SignupRequest>;
+
+export const LoginRequest = z.object({
+    username: z.string(),
+    password: z.string(),
+});
+export type LoginRequest = z.infer<typeof LoginRequest>;
+
+export const RequestPasswordResetRequest = z.object({
+    email: z.string().email(),
+});
+export type RequestPasswordResetRequest = z.infer<
+    typeof RequestPasswordResetRequest
+>;
+
+export const ResetPasswordRequest = z.object({
+    token: z.string(),
+    password: z.string().min(8),
+});
+export type ResetPasswordRequest = z.infer<typeof ResetPasswordRequest>;
 
 export const User = z.union([LocalUser, ServerUser]);
 export type User = z.infer<typeof User>;
@@ -132,3 +174,70 @@ export const DuplicateScheduleRequest = z.object({
 export type DuplicateScheduleRequest = z.infer<typeof DuplicateScheduleRequest>;
 export const DuplicateScheduleResponse = AddScheduleResponse;
 export type DuplicateScheduleResponse = AddScheduleResponse;
+
+// --- Shared Schedule Snapshot (advisor approval of a schedule) ---
+
+export const SharedScheduleSnapshotId = z
+    .string()
+    .regex(/^sched-snap~[A-Za-z0-9\-_]{22}$/);
+export type SharedScheduleSnapshotId = z.infer<typeof SharedScheduleSnapshotId>;
+
+export const ScheduleApproval = z.object({
+    advisorId: UserId,
+    advisorEppn: z.string(),
+    advisorName: z.string(),
+    status: z.enum(["approved", "rejected"]),
+    comment: z.string(),
+    signature: z.string(),
+    timestamp: z.string(),
+});
+export type ScheduleApproval = z.infer<typeof ScheduleApproval>;
+
+export const SharedScheduleSnapshot = z.object({
+    _id: SharedScheduleSnapshotId,
+    studentUserId: UserId,
+    studentEppn: z.string(),
+    studentSchool: SchoolEnum,
+    advisorEmail: z.string(),
+    scheduleId: ScheduleId,
+    scheduleName: z.string(),
+    term: TermIdentifier,
+    sections: UserSection.array(),
+    sharedAt: z.string(),
+    approvals: ScheduleApproval.array().optional(),
+});
+export type SharedScheduleSnapshot = z.infer<typeof SharedScheduleSnapshot>;
+
+export const ShareScheduleRequest = z.object({
+    scheduleId: ScheduleId,
+    advisorEmail: z.string().email(),
+});
+export type ShareScheduleRequest = z.infer<typeof ShareScheduleRequest>;
+
+export const ShareScheduleResponse = z.object({
+    snapshotId: SharedScheduleSnapshotId,
+});
+export type ShareScheduleResponse = z.infer<typeof ShareScheduleResponse>;
+
+export const GetScheduleSnapshotsResponse = z.object({
+    snapshots: SharedScheduleSnapshot.array(),
+});
+export type GetScheduleSnapshotsResponse = z.infer<
+    typeof GetScheduleSnapshotsResponse
+>;
+
+export const ScheduleApprovalRequest = z.object({
+    snapshotId: SharedScheduleSnapshotId,
+    status: z.enum(["approved", "rejected"]),
+    comment: z.string(),
+    signature: z.string(),
+    advisorName: z.string(),
+});
+export type ScheduleApprovalRequest = z.infer<typeof ScheduleApprovalRequest>;
+
+export const DeleteScheduleSnapshotRequest = z.object({
+    snapshotId: SharedScheduleSnapshotId,
+});
+export type DeleteScheduleSnapshotRequest = z.infer<
+    typeof DeleteScheduleSnapshotRequest
+>;

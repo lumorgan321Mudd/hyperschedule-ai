@@ -3,6 +3,7 @@ import AppCss from "@components/App.module.css";
 import MainSelectorCss from "@components/MainSelector.module.css";
 import MiniMap from "@components/MiniMap";
 import SelectedList from "@components/SelectedList";
+import ScheduleApprovalControl from "@components/ScheduleApprovalControl";
 import * as React from "react";
 import { useState } from "react";
 import useStore, { MainTab } from "@hooks/store";
@@ -98,6 +99,9 @@ export default function Sidebar() {
                         <>
                             <ScheduleSelect />
                             <SelectedList />
+                            {tab === MainTab.Schedule && (
+                                <ScheduleApprovalControl />
+                            )}
 
                             <ScheduleRendering />
                         </>

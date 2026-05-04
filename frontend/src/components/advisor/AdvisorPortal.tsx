@@ -1,7 +1,16 @@
 import { memo, useEffect, useState, useCallback, useMemo } from "react";
 import Css from "./AdvisorPortal.module.css";
 import AppCss from "@components/App.module.css";
-import { apiFetch, apiApproveSnapshot, fetchWithToast, schoolCodeFromEnum } from "@lib/api";
+import {
+    apiFetch,
+    apiApproveSnapshot,
+    apiGetAdvisorScheduleSnapshots,
+    apiApproveScheduleSnapshot,
+    apiGetAdvisorLinks,
+    apiRespondAdvisorLink,
+    fetchWithToast,
+    schoolCodeFromEnum,
+} from "@lib/api";
 import * as APIv4 from "hyperschedule-shared/api/v4";
 import { stringifyCourseCode, stringifySectionCodeLong, termIsBefore } from "hyperschedule-shared/api/v4";
 import { CURRENT_TERM } from "hyperschedule-shared/api/current-term";
@@ -59,24 +68,57 @@ interface SchoolData {
 
 export default memo(function AdvisorPortal() {
     const [snapshots, setSnapshots] = useState<APIv4.SharedBlockSnapshot[]>([]);
+    const [scheduleSnapshots, setScheduleSnapshots] = useState<
+        APIv4.SharedScheduleSnapshot[]
+    >([]);
+    const [linkRequests, setLinkRequests] = useState<APIv4.AdvisorLink[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
+        null,
+    );
     const [loading, setLoading] = useState(true);
 
     const fetchSnapshots = useCallback(async () => {
         try {
-            const result = await apiFetch.getSharedSnapshots();
-            setSnapshots(result.snapshots);
+            const [blockResult, scheduleResult, linksResult] = await Promise.all([
+                apiFetch.getSharedSnapshots(),
+                apiGetAdvisorScheduleSnapshots(),
+                apiGetAdvisorLinks(),
+            ]);
+            setSnapshots(blockResult.snapshots);
+            setScheduleSnapshots(scheduleResult.snapshots);
+            setLinkRequests(linksResult.asAdvisor);
         } catch {
             toast.error("Failed to load shared plans");
         }
         setLoading(false);
     }, []);
 
+    const handleRespond = useCallback(
+        async (linkId: string, accept: boolean) => {
+            try {
+                const res = await apiRespondAdvisorLink(linkId, accept);
+                if (res.ok) {
+                    toast.success(accept ? "Link accepted" : "Request rejected");
+                    await fetchSnapshots();
+                } else {
+                    toast.error("Failed to respond");
+                }
+            } catch {
+                toast.error("Failed to respond");
+            }
+        },
+        [fetchSnapshots],
+    );
+
     useEffect(() => {
         void fetchSnapshots();
     }, [fetchSnapshots]);
 
     const selectedSnapshot = snapshots.find((s) => s._id === selectedId);
+    const selectedScheduleSnapshot = scheduleSnapshots.find(
+        (s) => s._id === selectedScheduleId,
+    );
 
     return (
         <div className={Css.container}>
@@ -97,6 +139,78 @@ export default memo(function AdvisorPortal() {
                     {loading && (
                         <p className={Css.emptyMessage}>Loading...</p>
                     )}
+                    {!loading &&
+                        linkRequests.filter((l) => l.status === "pending")
+                            .length > 0 && (
+                            <>
+                                <h4 className={Css.sectionHeader}>
+                                    Pending Link Requests
+                                </h4>
+                                {linkRequests
+                                    .filter((l) => l.status === "pending")
+                                    .map((l) => (
+                                        <div
+                                            key={l._id}
+                                            className={Css.linkRequest}
+                                        >
+                                            <div
+                                                className={Css.linkRequestMain}
+                                            >
+                                                <span
+                                                    className={
+                                                        Css.snapshotName
+                                                    }
+                                                >
+                                                    {l.studentUsername ||
+                                                        "Student"}
+                                                </span>
+                                                <span
+                                                    className={Css.snapshotDate}
+                                                >
+                                                    Requested{" "}
+                                                    {new Date(
+                                                        l.requestedAt,
+                                                    ).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            <div
+                                                className={
+                                                    Css.linkRequestActions
+                                                }
+                                            >
+                                                <button
+                                                    className={classNames(
+                                                        AppCss.defaultButton,
+                                                        Css.acceptButton,
+                                                    )}
+                                                    onClick={() =>
+                                                        handleRespond(
+                                                            l._id,
+                                                            true,
+                                                        )
+                                                    }
+                                                >
+                                                    Accept
+                                                </button>
+                                                <button
+                                                    className={classNames(
+                                                        AppCss.defaultButton,
+                                                        Css.rejectButton,
+                                                    )}
+                                                    onClick={() =>
+                                                        handleRespond(
+                                                            l._id,
+                                                            false,
+                                                        )
+                                                    }
+                                                >
+                                                    Reject
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                            </>
+                        )}
                     {!loading && snapshots.length === 0 && (
                         <p className={Css.emptyMessage}>
                             No plans have been shared with you yet.
@@ -108,7 +222,10 @@ export default memo(function AdvisorPortal() {
                             className={classNames(Css.snapshotItem, {
                                 [Css.active]: selectedId === snap._id,
                             })}
-                            onClick={() => setSelectedId(snap._id)}
+                            onClick={() => {
+                                setSelectedId(snap._id);
+                                setSelectedScheduleId(null);
+                            }}
                         >
                             <span className={Css.snapshotName}>
                                 {snap.blockName}
@@ -151,20 +268,252 @@ export default memo(function AdvisorPortal() {
                             )}
                         </div>
                     ))}
+
+                    {scheduleSnapshots.length > 0 && (
+                        <h4 className={Css.sectionHeader}>Shared Schedules</h4>
+                    )}
+                    {scheduleSnapshots.map((snap) => {
+                        const latest = snap.approvals?.length
+                            ? snap.approvals[snap.approvals.length - 1]
+                            : undefined;
+                        return (
+                            <div
+                                key={snap._id}
+                                className={classNames(Css.snapshotItem, {
+                                    [Css.active]:
+                                        selectedScheduleId === snap._id,
+                                })}
+                                onClick={() => {
+                                    setSelectedScheduleId(snap._id);
+                                    setSelectedId(null);
+                                }}
+                            >
+                                <span className={Css.snapshotName}>
+                                    {snap.scheduleName}
+                                </span>
+                                <span className={Css.snapshotStudent}>
+                                    {snap.studentEppn}
+                                </span>
+                                <span className={Css.snapshotDate}>
+                                    Shared{" "}
+                                    {new Date(
+                                        snap.sharedAt,
+                                    ).toLocaleDateString()}
+                                </span>
+                                {latest && (
+                                    <span
+                                        className={classNames(
+                                            Css.statusBadge,
+                                            {
+                                                [Css.approved]:
+                                                    latest.status ===
+                                                    "approved",
+                                                [Css.rejected]:
+                                                    latest.status ===
+                                                    "rejected",
+                                            },
+                                        )}
+                                    >
+                                        {latest.status}
+                                    </span>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 
             <div className={Css.detail}>
-                {!selectedSnapshot ? (
-                    <div className={Css.emptyDetail}>
-                        <p>Select a shared plan to review.</p>
-                    </div>
-                ) : (
+                {selectedSnapshot ? (
                     <SnapshotDetail
                         snapshot={selectedSnapshot}
+                        scheduleSnapshots={scheduleSnapshots}
                         onRefresh={fetchSnapshots}
                     />
+                ) : selectedScheduleSnapshot ? (
+                    <ScheduleSnapshotDetail
+                        snapshot={selectedScheduleSnapshot}
+                        onRefresh={fetchSnapshots}
+                    />
+                ) : (
+                    <div className={Css.emptyDetail}>
+                        <p>Select a shared plan or schedule to review.</p>
+                    </div>
                 )}
+            </div>
+        </div>
+    );
+});
+
+const ScheduleSnapshotDetail = memo(function ScheduleSnapshotDetail({
+    snapshot,
+    onRefresh,
+}: {
+    snapshot: APIv4.SharedScheduleSnapshot;
+    onRefresh: () => Promise<void>;
+}) {
+    const [comment, setComment] = useState("");
+    const [signature, setSignature] = useState("");
+    const [advisorName, setAdvisorName] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+
+    const latest = snapshot.approvals?.length
+        ? snapshot.approvals[snapshot.approvals.length - 1]
+        : undefined;
+
+    const handleAction = useCallback(
+        async (status: "approved" | "rejected") => {
+            if (!signature.trim() || !advisorName.trim()) {
+                toast.error("Please provide your name and signature");
+                return;
+            }
+            setSubmitting(true);
+            try {
+                const res = await apiApproveScheduleSnapshot(snapshot._id, {
+                    status,
+                    comment,
+                    signature,
+                    advisorName,
+                });
+                if (res.ok) {
+                    toast.success(
+                        status === "approved"
+                            ? "Schedule approved"
+                            : "Approval revoked",
+                    );
+                    setComment("");
+                    setSignature("");
+                    setAdvisorName("");
+                    await onRefresh();
+                }
+            } catch {
+                toast.error("Failed to submit review");
+            }
+            setSubmitting(false);
+        },
+        [snapshot._id, comment, signature, advisorName, onRefresh],
+    );
+
+    return (
+        <div className={Css.snapshotDetail}>
+            <div className={Css.detailHeader}>
+                <h2>Schedule: {snapshot.scheduleName}</h2>
+                <p className={Css.detailMeta}>
+                    Student: {snapshot.studentEppn} |{" "}
+                    {APIv4.schoolCodeToName(snapshot.studentSchool)} | Term:{" "}
+                    {snapshot.term.term} {snapshot.term.year} | Shared{" "}
+                    {new Date(snapshot.sharedAt).toLocaleDateString()}
+                </p>
+            </div>
+
+            {snapshot.approvals && snapshot.approvals.length > 0 && (
+                <div className={Css.approvalHistory}>
+                    <h4>Review History</h4>
+                    {snapshot.approvals.map((approval, i) => (
+                        <div
+                            key={i}
+                            className={classNames(Css.approvalItem, {
+                                [Css.approved]:
+                                    approval.status === "approved",
+                                [Css.rejected]:
+                                    approval.status === "rejected",
+                            })}
+                        >
+                            <span className={Css.approvalStatus}>
+                                {approval.status === "approved"
+                                    ? "Approved"
+                                    : "Revoked"}
+                            </span>
+                            <span>by {approval.advisorName}</span>
+                            <span className={Css.approvalDate}>
+                                {new Date(
+                                    approval.timestamp,
+                                ).toLocaleDateString()}
+                            </span>
+                            {approval.comment && (
+                                <p className={Css.approvalComment}>
+                                    {approval.comment}
+                                </p>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <div className={Css.semesterGrid}>
+                <div className={Css.semesterColumn}>
+                    <h4 className={Css.semesterName}>Courses</h4>
+                    <div className={Css.sectionList}>
+                        {snapshot.sections.length === 0 && (
+                            <p className={Css.emptySections}>No courses</p>
+                        )}
+                        {snapshot.sections.map((s, i) => (
+                            <div key={i} className={Css.sectionItem}>
+                                <span className={Css.sectionCode}>
+                                    {stringifyCourseCode(s.section)}
+                                </span>
+                                <span className={Css.sectionSchool}>
+                                    {s.section.affiliation}
+                                </span>
+                                {s.attrs.requirementTags?.length ? (
+                                    <span className={Css.sectionSchool}>
+                                        [{s.attrs.requirementTags.join(", ")}]
+                                    </span>
+                                ) : null}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <div className={Css.approvalForm}>
+                <h4>
+                    {latest?.status === "approved"
+                        ? "Revoke or update your decision"
+                        : "Submit your review"}
+                </h4>
+                <input
+                    type="text"
+                    placeholder="Your name"
+                    value={advisorName}
+                    onChange={(e) => setAdvisorName(e.target.value)}
+                    className={Css.formInput}
+                />
+                <textarea
+                    placeholder="Optional comments"
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    className={Css.formTextarea}
+                />
+                <input
+                    type="text"
+                    placeholder="Type your name as signature"
+                    value={signature}
+                    onChange={(e) => setSignature(e.target.value)}
+                    className={Css.formInput}
+                />
+                <div className={Css.formActions}>
+                    <button
+                        className={classNames(
+                            AppCss.defaultButton,
+                            Css.approveButton,
+                        )}
+                        disabled={submitting}
+                        onClick={() => handleAction("approved")}
+                    >
+                        Approve
+                    </button>
+                    <button
+                        className={classNames(
+                            AppCss.defaultButton,
+                            Css.rejectButton,
+                        )}
+                        disabled={submitting}
+                        onClick={() => handleAction("rejected")}
+                    >
+                        {latest?.status === "approved" ? "Revoke" : "Reject"}
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -172,9 +521,11 @@ export default memo(function AdvisorPortal() {
 
 const SnapshotDetail = memo(function SnapshotDetail({
     snapshot,
+    scheduleSnapshots,
     onRefresh,
 }: {
     snapshot: APIv4.SharedBlockSnapshot;
+    scheduleSnapshots: APIv4.SharedScheduleSnapshot[];
     onRefresh: () => Promise<void>;
 }) {
     const [comment, setComment] = useState("");
@@ -185,6 +536,16 @@ const SnapshotDetail = memo(function SnapshotDetail({
     const [reqLoading, setReqLoading] = useState(false);
 
     const semesterEntries = Object.entries(snapshot.semesters);
+
+    // Schedule snapshots from the same student.
+    // Approved → contribute to completed (green); pending → proposed (yellow); rejected → ignored.
+    const studentScheduleSnapshots = useMemo(
+        () =>
+            scheduleSnapshots.filter(
+                (s) => s.studentUserId === snapshot.studentUserId,
+            ),
+        [scheduleSnapshots, snapshot.studentUserId],
+    );
 
     // Fetch graduation requirements for this snapshot's college
     useEffect(() => {
@@ -200,21 +561,28 @@ const SnapshotDetail = memo(function SnapshotDetail({
             .finally(() => setReqLoading(false));
     }, [snapshot.college]);
 
-    // Derive unique terms from snapshot sections for area-code lookups
+    // Derive unique terms from snapshot sections + overlaid schedule snapshots for area-code lookups
     const snapshotTerms = useMemo(() => {
         const terms: APIv4.TermIdentifier[] = [];
         const seen = new Set<string>();
-        for (const sem of Object.values(snapshot.semesters)) {
-            for (const s of sem.sections) {
-                const key = `${s.section.year}${s.section.term}`;
-                if (!seen.has(key)) {
-                    seen.add(key);
-                    terms.push({ year: s.section.year, term: s.section.term as APIv4.Term });
-                }
+        const addSection = (s: APIv4.UserSection) => {
+            const key = `${s.section.year}${s.section.term}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                terms.push({
+                    year: s.section.year,
+                    term: s.section.term as APIv4.Term,
+                });
             }
+        };
+        for (const sem of Object.values(snapshot.semesters)) {
+            for (const s of sem.sections) addSection(s);
+        }
+        for (const sched of studentScheduleSnapshots) {
+            for (const s of sched.sections) addSection(s);
         }
         return terms;
-    }, [snapshot.semesters]);
+    }, [snapshot.semesters, studentScheduleSnapshots]);
 
     const sectionsData = useSectionsForTermsQuery(snapshotTerms.length > 0, snapshotTerms).data;
 
@@ -259,6 +627,40 @@ const SnapshotDetail = memo(function SnapshotDetail({
             const longKey = stringifySectionCodeLong(s.section);
             const fullSection = sectionsLookup.get(longKey);
             if (fullSection) {
+                courseAreaCodes.set(baseKey, fullSection.courseAreas);
+            }
+        }
+    }
+
+    // Overlay schedule snapshot sections: approved → completed (green), pending → proposed (yellow).
+    // Approved wins over pending if the same course appears in multiple snapshots.
+    for (const sched of studentScheduleSnapshots) {
+        const lastApproval = sched.approvals?.[sched.approvals.length - 1];
+        if (lastApproval?.status === "rejected") continue;
+        const isApproved = lastApproval?.status === "approved";
+        const targetSet = isApproved ? completedCourses : proposedCourses;
+        for (const s of sched.sections) {
+            const code = stringifyCourseCode(s.section);
+            const baseKey = courseBaseKey(code);
+            // If already counted as completed by the block, leave it. Otherwise add.
+            if (completedCourses.has(baseKey)) continue;
+            // If approved schedule and previously only proposed, promote to completed.
+            if (isApproved) proposedCourses.delete(baseKey);
+            targetSet.add(baseKey);
+            if (!courseDisplayNames.has(baseKey))
+                courseDisplayNames.set(baseKey, code.trim());
+            if (!courseDepartments.has(baseKey))
+                courseDepartments.set(baseKey, s.section.department);
+            const tags = s.attrs.requirementTags;
+            if (tags && tags.length > 0) {
+                courseRequirementTags.set(baseKey, tags);
+                for (const tag of tags) {
+                    targetSet.add(courseBaseKey(tag));
+                }
+            }
+            const longKey = stringifySectionCodeLong(s.section);
+            const fullSection = sectionsLookup.get(longKey);
+            if (fullSection && !courseAreaCodes.has(baseKey)) {
                 courseAreaCodes.set(baseKey, fullSection.courseAreas);
             }
         }
@@ -448,6 +850,20 @@ const SnapshotDetail = memo(function SnapshotDetail({
                                 {schoolData.school} &mdash; Catalog Year:{" "}
                                 {schoolData.catalog_year}
                             </p>
+
+                            {studentScheduleSnapshots.length > 0 && (
+                                <p className={Css.scheduleOverlayNote}>
+                                    Includes courses from{" "}
+                                    {studentScheduleSnapshots.length} shared
+                                    schedule
+                                    {studentScheduleSnapshots.length === 1
+                                        ? ""
+                                        : "s"}
+                                    : approved schedules show as completed
+                                    (green), pending schedules show as proposed
+                                    (yellow).
+                                </p>
+                            )}
 
                             {schoolData.general_requirements &&
                                 schoolData.general_requirements.length > 0 && (

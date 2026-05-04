@@ -8,6 +8,11 @@ import {
     getSnapshot,
     addApproval,
 } from "../../db/models/shared-snapshot";
+import {
+    getScheduleSnapshotsForAdvisor,
+    getScheduleSnapshot,
+    addScheduleApproval,
+} from "../../db/models/shared-schedule-snapshot";
 import { createLogger } from "../../logger";
 
 const logger = createLogger("routes.advisor");
@@ -66,8 +71,9 @@ advisorApp.get(
 
         const user = await getUser(request.userToken.uuid);
 
-        // Match snapshots by advisor's eppn (email)
-        const snapshots = await getSnapshotsForAdvisor(user.eppn);
+        // Match snapshots by advisor's email
+        const advisorEmail = user.email ?? user.eppn ?? "";
+        const snapshots = await getSnapshotsForAdvisor(advisorEmail);
 
         return response
             .header("Content-Type", "application/json")
@@ -97,15 +103,16 @@ advisorApp.post(
 
         // Verify this advisor has access to this snapshot
         const user = await getUser(request.userToken.uuid);
+        const advisorEmail = user.email ?? user.eppn ?? "";
         const snapshot = await getSnapshot(snapshotId);
         if (!snapshot)
             return response.status(404).send("Snapshot not found");
-        if (snapshot.advisorEmail !== user.eppn)
+        if (snapshot.advisorEmail !== advisorEmail)
             return response.status(403).send("Not authorized");
 
         const approval: APIv4.SnapshotApproval = {
             advisorId: user._id,
-            advisorEppn: user.eppn,
+            advisorEppn: advisorEmail,
             advisorName: input.data.advisorName,
             status: input.data.status,
             comment: input.data.comment,
@@ -114,6 +121,66 @@ advisorApp.post(
         };
 
         await addApproval(snapshotId, approval);
+
+        return response.status(201).end();
+    },
+);
+
+// GET /schedule-snapshots — get all schedule snapshots shared with this advisor
+advisorApp.get(
+    "/schedule-snapshots",
+    async function (request: Request, response: Response) {
+        if (request.userToken === null) return response.status(401).end();
+
+        const user = await getUser(request.userToken.uuid);
+        const advisorEmail = user.email ?? user.eppn ?? "";
+        const snapshots = await getScheduleSnapshotsForAdvisor(advisorEmail);
+
+        return response
+            .header("Content-Type", "application/json")
+            .send({
+                snapshots,
+            } satisfies APIv4.GetScheduleSnapshotsResponse);
+    },
+);
+
+// POST /schedule-snapshots/:snapshotId/approve — approve or reject a schedule
+advisorApp.post(
+    "/schedule-snapshots/:snapshotId/approve",
+    async function (request: Request, response: Response) {
+        if (request.userToken === null) return response.status(401).end();
+
+        const snapshotId = request.params
+            .snapshotId as APIv4.SharedScheduleSnapshotId;
+        const input = APIv4.ScheduleApprovalRequest.safeParse({
+            ...request.body,
+            snapshotId,
+        });
+        if (!input.success)
+            return response
+                .status(400)
+                .header("Content-Type", "application/json")
+                .send(input.error);
+
+        const user = await getUser(request.userToken.uuid);
+        const advisorEmail = user.email ?? user.eppn ?? "";
+        const snapshot = await getScheduleSnapshot(snapshotId);
+        if (!snapshot)
+            return response.status(404).send("Schedule snapshot not found");
+        if (snapshot.advisorEmail !== advisorEmail)
+            return response.status(403).send("Not authorized");
+
+        const approval: APIv4.ScheduleApproval = {
+            advisorId: user._id,
+            advisorEppn: advisorEmail,
+            advisorName: input.data.advisorName,
+            status: input.data.status,
+            comment: input.data.comment,
+            signature: input.data.signature,
+            timestamp: new Date().toISOString(),
+        };
+
+        await addScheduleApproval(snapshotId, approval);
 
         return response.status(201).end();
     },

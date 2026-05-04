@@ -12,6 +12,8 @@ export const enum PopupOption {
     CreateBlock = "create-block",
     CreateHsaBlock = "create-hsa-block",
     ShareBlock = "share-block",
+    ResetPassword = "reset-password",
+    ManageAdvisors = "manage-advisors",
 }
 
 export type Popup =
@@ -40,4 +42,9 @@ export type Popup =
           blockId: APIv4.GraduationBlockId;
           planType?: string;
       }
+    | {
+          option: PopupOption.ResetPassword;
+          token: string;
+      }
+    | { option: PopupOption.ManageAdvisors }
     | null;

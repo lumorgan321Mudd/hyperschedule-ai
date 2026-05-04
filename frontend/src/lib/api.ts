@@ -248,6 +248,58 @@ export async function apiApproveSnapshot(
     );
 }
 
+export async function apiShareSchedule(
+    body: APIv4.ShareScheduleRequest,
+): Promise<APIv4.ShareScheduleResponse> {
+    const res = await fetchWithToast(`${__API_URL__}/v4/user/schedule-share`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+    });
+    return res.json();
+}
+
+export async function apiGetMyScheduleSnapshots(): Promise<APIv4.GetScheduleSnapshotsResponse> {
+    const res = await fetchWithToast(
+        `${__API_URL__}/v4/user/my-schedule-snapshots`,
+        { credentials: "include" },
+    );
+    return res.json();
+}
+
+export async function apiGetAdvisorScheduleSnapshots(): Promise<APIv4.GetScheduleSnapshotsResponse> {
+    const res = await fetchWithToast(
+        `${__API_URL__}/v4/advisor/schedule-snapshots`,
+        { credentials: "include" },
+    );
+    return res.json();
+}
+
+export async function apiApproveScheduleSnapshot(
+    snapshotId: string,
+    body: Omit<APIv4.ScheduleApprovalRequest, "snapshotId">,
+): Promise<Response> {
+    return fetchWithToast(
+        `${__API_URL__}/v4/advisor/schedule-snapshots/${snapshotId}/approve`,
+        {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        },
+    );
+}
+
+export async function apiDeleteScheduleSnapshot(
+    snapshotId: string,
+): Promise<Response> {
+    return fetchWithToast(
+        `${__API_URL__}/v4/user/schedule-snapshots/${snapshotId}`,
+        { method: "DELETE", credentials: "include" },
+    );
+}
+
 export async function apiSetRequirementOverride(
     blockId: string,
     body: unknown,
@@ -272,6 +324,67 @@ export async function apiDeleteRequirementOverride(
         `${__API_URL__}/v4/graduation-blocks/${blockId}/requirement-override/${overrideId}`,
         { method: "DELETE", credentials: "include" },
     );
+}
+
+// Advisor links
+
+export async function apiRequestAdvisorLink(
+    advisorUsername: string,
+): Promise<APIv4.RequestAdvisorLinkResponse> {
+    const res = await fetchWithToast(`${__API_URL__}/v4/advisor-links/`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ advisorUsername }),
+    });
+    if (!res.ok) {
+        let message = "Failed to request link";
+        try {
+            const data = (await res.json()) as { error?: string };
+            if (data?.error) message = data.error;
+        } catch {}
+        throw new Error(message);
+    }
+    return res.json();
+}
+
+export async function apiGetAdvisorLinks(): Promise<APIv4.GetAdvisorLinksResponse> {
+    const res = await fetchWithToast(`${__API_URL__}/v4/advisor-links/mine`, {
+        credentials: "include",
+    });
+    return res.json();
+}
+
+export async function apiRespondAdvisorLink(
+    linkId: string,
+    accept: boolean,
+): Promise<Response> {
+    return fetchWithToast(
+        `${__API_URL__}/v4/advisor-links/${linkId}/respond`,
+        {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ accept }),
+        },
+    );
+}
+
+export async function apiDeleteAdvisorLink(linkId: string): Promise<Response> {
+    return fetchWithToast(`${__API_URL__}/v4/advisor-links/${linkId}`, {
+        method: "DELETE",
+        credentials: "include",
+    });
+}
+
+export async function apiGetLinkedStudent(
+    linkId: string,
+): Promise<APIv4.GetLinkedStudentResponse> {
+    const res = await fetchWithToast(
+        `${__API_URL__}/v4/advisor-links/${linkId}/student`,
+        { credentials: "include" },
+    );
+    return res.json();
 }
 
 /** Convert school enum to lowercase code used in requirement data file paths. */

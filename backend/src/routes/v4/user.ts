@@ -11,6 +11,12 @@ import {
     setSectionAttrs,
     duplicateSchedule,
 } from "../../db/models/user";
+import {
+    createScheduleSnapshot,
+    getScheduleSnapshotsForStudent,
+    deleteScheduleSnapshot,
+} from "../../db/models/shared-schedule-snapshot";
+import { studentHasAcceptedAdvisorByEmail } from "../../db/models/advisor-link";
 import { createLogger } from "../../logger";
 import { json as jsonParser } from "milliparsec";
 import * as APIv4 from "hyperschedule-shared/api/v4";
@@ -64,7 +70,15 @@ userApp.get("/", async function (request: Request, response: Response) {
             })
             .end();
     }
-    return response.header("Content-Type", "application/json").send(user);
+    const {
+        passwordHash: _pwh,
+        passwordResetTokenHash: _prth,
+        passwordResetExpiry: _pre,
+        ...safeUser
+    } = user;
+    return response
+        .header("Content-Type", "application/json")
+        .send(safeUser);
 });
 
 userApp
@@ -217,5 +231,85 @@ userApp
         );
         response.status(204).end();
     });
+
+// POST /schedule-share — share a schedule with an advisor
+userApp.post(
+    "/schedule-share",
+    jsonParser(),
+    async function (request: Request, response: Response) {
+        if (request.userToken === null) return response.status(401).end();
+
+        const input = APIv4.ShareScheduleRequest.safeParse(request.body);
+        if (!input.success)
+            return response
+                .status(400)
+                .header("Content-Type", "application/json")
+                .send(input.error);
+
+        const user = await getUser(request.userToken.uuid);
+        const schedule = user.schedules[input.data.scheduleId];
+        if (!schedule)
+            return response.status(404).send("Schedule not found");
+
+        const linked = await studentHasAcceptedAdvisorByEmail(
+            user._id,
+            input.data.advisorEmail,
+        );
+        if (!linked) {
+            return response.status(403).json({
+                error: "You must have an accepted link with this advisor before sharing.",
+            });
+        }
+
+        const snapshotId = await createScheduleSnapshot({
+            studentUserId: user._id,
+            studentEppn: user.email ?? user.eppn ?? "",
+            studentSchool: user.school,
+            advisorEmail: input.data.advisorEmail,
+            scheduleId: input.data.scheduleId,
+            scheduleName: schedule.name,
+            term: schedule.term,
+            sections: JSON.parse(JSON.stringify(schedule.sections)),
+            sharedAt: new Date().toISOString(),
+        });
+
+        return response
+            .header("Content-Type", "application/json")
+            .send({ snapshotId } satisfies APIv4.ShareScheduleResponse);
+    },
+);
+
+// GET /my-schedule-snapshots — student lists schedules they've shared
+userApp.get(
+    "/my-schedule-snapshots",
+    async function (request: Request, response: Response) {
+        if (request.userToken === null) return response.status(401).end();
+
+        const snapshots = await getScheduleSnapshotsForStudent(
+            request.userToken.uuid,
+        );
+
+        return response
+            .header("Content-Type", "application/json")
+            .send({ snapshots } satisfies APIv4.GetScheduleSnapshotsResponse);
+    },
+);
+
+// DELETE /schedule-snapshots/:snapshotId — student withdraws a share
+userApp.delete(
+    "/schedule-snapshots/:snapshotId",
+    async function (request: Request, response: Response) {
+        if (request.userToken === null) return response.status(401).end();
+
+        const snapshotId = request.params
+            .snapshotId as APIv4.SharedScheduleSnapshotId;
+        const deleted = await deleteScheduleSnapshot(
+            snapshotId,
+            request.userToken.uuid,
+        );
+        if (!deleted) return response.status(404).end();
+        return response.status(204).end();
+    },
+);
 
 export { userApp };

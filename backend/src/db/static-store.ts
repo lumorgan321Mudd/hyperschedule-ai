@@ -1,7 +1,11 @@
 import { readFile } from "fs/promises";
 import { join } from "path";
 import type * as APIv4 from "hyperschedule-shared/api/v4";
-import type { SharedBlockSnapshot } from "hyperschedule-shared/api/v4";
+import type {
+    SharedBlockSnapshot,
+    SharedScheduleSnapshot,
+    AdvisorLink,
+} from "hyperschedule-shared/api/v4";
 import { createLogger } from "../logger";
 
 const logger = createLogger("db.static-store");
@@ -10,6 +14,8 @@ export let staticSections: APIv4.Section[] = [];
 export let staticMode = false;
 export const staticUsers = new Map<string, APIv4.ServerUser>();
 export const staticSnapshots = new Map<string, SharedBlockSnapshot>();
+export const staticScheduleSnapshots = new Map<string, SharedScheduleSnapshot>();
+export const staticAdvisorLinks = new Map<string, AdvisorLink>();
 
 export async function loadStaticSections(): Promise<void> {
     const filePath = join(process.cwd(), "..", "data", "sp2026-sections.json");

@@ -15,6 +15,7 @@ import { termIsBefore } from "hyperschedule-shared/api/v4";
 import { CURRENT_TERM } from "hyperschedule-shared/api/current-term";
 import classNames from "classnames";
 import { courseBaseKey, type SubCategory } from "@lib/hsa-requirements";
+import AdvisorGraduationRequirements from "./AdvisorGraduationRequirements";
 
 interface SchoolOption {
     code: string;
@@ -93,6 +94,12 @@ export function isCourseProposed(
 }
 
 export default memo(function GraduationRequirements() {
+    const role = useUserStore((store) => store.server?.role);
+    if (role === "advisor") return <AdvisorGraduationRequirements />;
+    return <StudentGraduationRequirements />;
+});
+
+const StudentGraduationRequirements = memo(function StudentGraduationRequirements() {
     const server = useUserStore((store) => store.server);
     const graduationBlocks = useUserStore((store) => store.graduationBlocks);
     const schedules = useUserStore((store) => store.schedules);
@@ -100,7 +107,7 @@ export default memo(function GraduationRequirements() {
     const [schools, setSchools] = useState<SchoolOption[]>([]);
     const [schoolData, setSchoolData] = useState<SchoolData | null>(null);
     const [selectedMajor, setSelectedMajor] = useState<string>("");
-    const [checkAgainst, setCheckAgainst] = useState<string>("");
+    const [checkAgainst, setCheckAgainst] = useState<string>("all-schedules");
     const [loading, setLoading] = useState(false);
     const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -280,6 +287,14 @@ export default memo(function GraduationRequirements() {
             const targetSet = isPast ? completedCourses : proposedCourses;
             for (const s of schedule.sections) addSectionInfo(s, targetSet);
         }
+    } else if (checkAgainst === "all-schedules") {
+        // Aggregate all sections across every user schedule.
+        // Past terms count as completed; current/future as proposed.
+        for (const schedule of Object.values(schedules)) {
+            const isPast = termIsBefore(schedule.term, CURRENT_TERM);
+            const targetSet = isPast ? completedCourses : proposedCourses;
+            for (const s of schedule.sections) addSectionInfo(s, targetSet);
+        }
     }
 
     const selectedMajorData = schoolData?.majors[selectedMajor];
@@ -395,37 +410,38 @@ export default memo(function GraduationRequirements() {
                             </select>
                         </label>
                     )}
-                    {(scheduleEntries.length > 0 || blockEntries.length > 0) && (
-                        <label>
-                            Check against:
-                            <select
-                                value={checkAgainst}
-                                onChange={(e) =>
-                                    setCheckAgainst(e.target.value)
-                                }
-                            >
-                                <option value="">None</option>
-                                {scheduleEntries.length > 0 && (
-                                    <optgroup label="Schedules">
-                                        {scheduleEntries.map(([id, schedule]) => (
-                                            <option key={id} value={`schedule:${id}`}>
-                                                {schedule.name}
-                                            </option>
-                                        ))}
-                                    </optgroup>
-                                )}
-                                {blockEntries.length > 0 && (
-                                    <optgroup label="Grad Plans">
-                                        {blockEntries.map(([id, block]) => (
-                                            <option key={id} value={`block:${id}`}>
-                                                {block.name}
-                                            </option>
-                                        ))}
-                                    </optgroup>
-                                )}
-                            </select>
-                        </label>
-                    )}
+                    <label>
+                        Check against:
+                        <select
+                            value={checkAgainst}
+                            onChange={(e) =>
+                                setCheckAgainst(e.target.value)
+                            }
+                        >
+                            <option value="all-schedules">
+                                All my schedules
+                            </option>
+                            <option value="">None</option>
+                            {scheduleEntries.length > 0 && (
+                                <optgroup label="Single schedule">
+                                    {scheduleEntries.map(([id, schedule]) => (
+                                        <option key={id} value={`schedule:${id}`}>
+                                            {schedule.name}
+                                        </option>
+                                    ))}
+                                </optgroup>
+                            )}
+                            {blockEntries.length > 0 && (
+                                <optgroup label="Grad Plans">
+                                    {blockEntries.map(([id, block]) => (
+                                        <option key={id} value={`block:${id}`}>
+                                            {block.name}
+                                        </option>
+                                    ))}
+                                </optgroup>
+                            )}
+                        </select>
+                    </label>
                 </div>
             </div>
 

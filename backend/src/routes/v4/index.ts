@@ -5,6 +5,7 @@ import { calendarApp } from "./calendar";
 import termApp from "./term";
 import { graduationBlocksApp } from "./graduation-blocks";
 import { advisorApp } from "./advisor";
+import { advisorLinkApp } from "./advisor-link";
 import { majorRequirementsApp } from "./major-requirements";
 
 const v4App = new App({ settings: { xPoweredBy: false } })
@@ -14,6 +15,7 @@ const v4App = new App({ settings: { xPoweredBy: false } })
     .use("/calendar/", calendarApp)
     .use("/graduation-blocks/", graduationBlocksApp)
     .use("/advisor/", advisorApp)
+    .use("/advisor-links/", advisorLinkApp)
     .use("/major-requirements/", majorRequirementsApp);
 
 export { v4App };

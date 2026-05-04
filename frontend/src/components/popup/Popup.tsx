@@ -14,6 +14,8 @@ import RoleSelect from "@components/popup/RoleSelect";
 import CreateBlock from "@components/popup/CreateBlock";
 import CreateHsaBlock from "@components/popup/CreateHsaBlock";
 import ShareBlock from "@components/popup/ShareBlock";
+import ResetPassword from "@components/popup/ResetPassword";
+import ManageAdvisors from "@components/popup/ManageAdvisors";
 import { memo } from "react";
 
 function PopupBox(props: {
@@ -123,6 +125,18 @@ export default memo(function Popup() {
             return (
                 <PopupBox>
                     <ShareBlock blockId={popup.blockId} planType={popup.planType} />
+                </PopupBox>
+            );
+        case PopupOption.ResetPassword:
+            return (
+                <PopupBox noDismiss>
+                    <ResetPassword token={popup.token} />
+                </PopupBox>
+            );
+        case PopupOption.ManageAdvisors:
+            return (
+                <PopupBox>
+                    <ManageAdvisors />
                 </PopupBox>
             );
         default:
