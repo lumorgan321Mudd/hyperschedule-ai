@@ -1,0 +1,118 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 0.5rem;
+    min-width: 32rem;
+    max-width: 40rem;
+    max-height: 70vh;
+    overflow-y: auto;
+
+    & h2 {
+        margin: 0;
+    }
+}
+
+.description {
+    color: var(--fg-1);
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.advisorRow {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.label {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.input {
+    flex: 1;
+    padding: 0.375rem 0.5rem;
+    border: 1px solid var(--bg-2);
+    border-radius: 0.25rem;
+    background-color: var(--bg-1);
+    color: var(--fg-0);
+    font-family: inherit;
+    font-size: 0.9rem;
+}
+
+.coursesSection {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.sectionTitle {
+    margin: 0;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--fg-2);
+}
+
+.courseRow {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--bg-2);
+    border-radius: 0.25rem;
+    background-color: var(--bg-1);
+}
+
+.courseMain {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+}
+
+.courseCode {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.courseTag {
+    color: var(--fg-2);
+    font-size: 0.8rem;
+}
+
+.radioGroup {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.radioLabel {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.empty {
+    color: var(--fg-2);
+    font-size: 0.85rem;
+    margin: 0;
+    font-style: italic;
+}
+
+.actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.cancelButton {
+    background-color: var(--bg-2) !important;
+}
+
+.actionButton {
+    padding: 0.375rem 1rem !important;
+}

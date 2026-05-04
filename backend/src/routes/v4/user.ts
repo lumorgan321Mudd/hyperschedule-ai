@@ -16,7 +16,15 @@ import {
     getScheduleSnapshotsForStudent,
     deleteScheduleSnapshot,
 } from "../../db/models/shared-schedule-snapshot";
-import { studentHasAcceptedAdvisorByEmail } from "../../db/models/advisor-link";
+import {
+    createHsaSubmission,
+    getHsaSubmissionsForStudent,
+    deleteHsaSubmission,
+} from "../../db/models/hsa-submission";
+import {
+    studentHasAcceptedAdvisorByEmail,
+    getAcceptedLinkByStudentAndAdvisorEmail,
+} from "../../db/models/advisor-link";
 import { createLogger } from "../../logger";
 import { json as jsonParser } from "milliparsec";
 import * as APIv4 from "hyperschedule-shared/api/v4";
@@ -305,6 +313,87 @@ userApp.delete(
             .snapshotId as APIv4.SharedScheduleSnapshotId;
         const deleted = await deleteScheduleSnapshot(
             snapshotId,
+            request.userToken.uuid,
+        );
+        if (!deleted) return response.status(404).end();
+        return response.status(204).end();
+    },
+);
+
+// POST /hsa-submission — student sends HSA plan to an HSA-typed advisor
+userApp.post(
+    "/hsa-submission",
+    jsonParser(),
+    async function (request: Request, response: Response) {
+        if (request.userToken === null) return response.status(401).end();
+
+        const input = APIv4.ShareHsaSubmissionRequest.safeParse(request.body);
+        if (!input.success)
+            return response
+                .status(400)
+                .header("Content-Type", "application/json")
+                .send(input.error);
+
+        const user = await getUser(request.userToken.uuid);
+
+        const link = await getAcceptedLinkByStudentAndAdvisorEmail(
+            user._id,
+            input.data.advisorEmail,
+        );
+        if (!link) {
+            return response.status(403).json({
+                error: "You must have an accepted link with this advisor before sharing.",
+            });
+        }
+        if (link.advisorType !== "hsa") {
+            return response.status(403).json({
+                error: "This advisor is not marked as your HSA advisor.",
+            });
+        }
+
+        const submissionId = await createHsaSubmission({
+            studentUserId: user._id,
+            studentUsername: user.username ?? user.eppn ?? "",
+            advisorId: link.advisorId,
+            advisorEmail: link.advisorEmail,
+            courses: input.data.courses,
+            sharedAt: new Date().toISOString(),
+        });
+
+        return response
+            .header("Content-Type", "application/json")
+            .send({
+                submissionId,
+            } satisfies APIv4.ShareHsaSubmissionResponse);
+    },
+);
+
+// GET /my-hsa-submissions — student lists HSA plans they've shared
+userApp.get(
+    "/my-hsa-submissions",
+    async function (request: Request, response: Response) {
+        if (request.userToken === null) return response.status(401).end();
+
+        const submissions = await getHsaSubmissionsForStudent(
+            request.userToken.uuid,
+        );
+
+        return response
+            .header("Content-Type", "application/json")
+            .send({ submissions } satisfies APIv4.GetHsaSubmissionsResponse);
+    },
+);
+
+// DELETE /hsa-submissions/:submissionId — student withdraws an HSA share
+userApp.delete(
+    "/hsa-submissions/:submissionId",
+    async function (request: Request, response: Response) {
+        if (request.userToken === null) return response.status(401).end();
+
+        const submissionId = request.params
+            .submissionId as APIv4.HsaSubmissionId;
+        const deleted = await deleteHsaSubmission(
+            submissionId,
             request.userToken.uuid,
         );
         if (!deleted) return response.status(404).end();

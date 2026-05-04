@@ -20,6 +20,8 @@ export default memo(function ScheduleApprovalControl() {
     const schedules = useUserStore((s) => s.schedules);
     const server = useUserStore((s) => s.server);
     const setPopup = useStore((s) => s.setPopup);
+    const isHmcStudent =
+        server?.school === APIv4.School.HMC && server?.role !== "advisor";
 
     const [snapshots, setSnapshots] = useState<APIv4.SharedScheduleSnapshot[]>(
         [],
@@ -41,8 +43,13 @@ export default memo(function ScheduleApprovalControl() {
                 apiGetAdvisorLinks(),
             ]);
             setSnapshots(r.snapshots);
+            // Exclude HSA-typed advisors — they're sent to via the
+            // dedicated "Send to HSA Advisor" flow.
             setLinkedAdvisors(
-                links.asStudent.filter((l) => l.status === "accepted"),
+                links.asStudent.filter(
+                    (l) =>
+                        l.status === "accepted" && l.advisorType !== "hsa",
+                ),
             );
         } catch {
             // toast already shown
@@ -136,6 +143,20 @@ export default memo(function ScheduleApprovalControl() {
                 >
                     <Feather.Users size={12} /> Manage
                 </button>
+                {isHmcStudent && (
+                    <button
+                        className={classNames(
+                            AppCss.defaultButton,
+                            Css.actionButton,
+                        )}
+                        onClick={() =>
+                            setPopup({ option: PopupOption.SendHsaPlan })
+                        }
+                        title="Send your HSA-tagged courses to your HSA advisor"
+                    >
+                        Send to HSA Advisor
+                    </button>
+                )}
             </div>
             <div className={Css.statusRow}>
                 <span className={Css.label}>Advisor approval:</span>

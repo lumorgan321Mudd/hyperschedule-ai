@@ -3,6 +3,7 @@ import type {
     SharedBlockSnapshot,
     SharedScheduleSnapshot,
     AdvisorLink,
+    HsaSubmission,
 } from "hyperschedule-shared/api/v4";
 import { connector } from "./connector";
 import type { Collection } from "mongodb";
@@ -17,6 +18,7 @@ export interface DBCollections {
     sharedBlockSnapshots: Collection<SharedBlockSnapshot>;
     sharedScheduleSnapshots: Collection<SharedScheduleSnapshot>;
     advisorLinks: Collection<AdvisorLink>;
+    hsaSubmissions: Collection<HsaSubmission>;
 }
 
 /* we use getters to defer the collection initialization to the first
@@ -59,6 +61,12 @@ Object.defineProperties(obj, {
         get(): Collection<AdvisorLink> {
             if (!connector.connected) throw Error("Database not connected");
             return connector.db.collection<AdvisorLink>("advisor_links");
+        },
+    },
+    hsaSubmissions: {
+        get(): Collection<HsaSubmission> {
+            if (!connector.connected) throw Error("Database not connected");
+            return connector.db.collection<HsaSubmission>("hsa_submissions");
         },
     },
 });

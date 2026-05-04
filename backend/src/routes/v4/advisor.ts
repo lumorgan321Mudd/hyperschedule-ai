@@ -13,6 +13,11 @@ import {
     getScheduleSnapshot,
     addScheduleApproval,
 } from "../../db/models/shared-schedule-snapshot";
+import {
+    getHsaSubmissionsForAdvisor,
+    getHsaSubmission,
+    addHsaSubmissionApproval,
+} from "../../db/models/hsa-submission";
 import { createLogger } from "../../logger";
 
 const logger = createLogger("routes.advisor");
@@ -181,6 +186,64 @@ advisorApp.post(
         };
 
         await addScheduleApproval(snapshotId, approval);
+
+        return response.status(201).end();
+    },
+);
+
+// GET /hsa-submissions — get all HSA submissions sent to this advisor
+advisorApp.get(
+    "/hsa-submissions",
+    async function (request: Request, response: Response) {
+        if (request.userToken === null) return response.status(401).end();
+
+        const submissions = await getHsaSubmissionsForAdvisor(
+            request.userToken.uuid,
+        );
+
+        return response
+            .header("Content-Type", "application/json")
+            .send({ submissions } satisfies APIv4.GetHsaSubmissionsResponse);
+    },
+);
+
+// POST /hsa-submissions/:submissionId/approve — approve or reject an HSA plan
+advisorApp.post(
+    "/hsa-submissions/:submissionId/approve",
+    async function (request: Request, response: Response) {
+        if (request.userToken === null) return response.status(401).end();
+
+        const submissionId = request.params
+            .submissionId as APIv4.HsaSubmissionId;
+        const input = APIv4.HsaSubmissionApprovalRequest.safeParse({
+            ...request.body,
+            submissionId,
+        });
+        if (!input.success)
+            return response
+                .status(400)
+                .header("Content-Type", "application/json")
+                .send(input.error);
+
+        const user = await getUser(request.userToken.uuid);
+        const submission = await getHsaSubmission(submissionId);
+        if (!submission)
+            return response.status(404).send("HSA submission not found");
+        if (submission.advisorId !== user._id)
+            return response.status(403).send("Not authorized");
+
+        const advisorEmail = user.email ?? user.eppn ?? "";
+        const approval: APIv4.HsaSubmissionApproval = {
+            advisorId: user._id,
+            advisorEppn: advisorEmail,
+            advisorName: input.data.advisorName,
+            status: input.data.status,
+            comment: input.data.comment,
+            signature: input.data.signature,
+            timestamp: new Date().toISOString(),
+        };
+
+        await addHsaSubmissionApproval(submissionId, approval);
 
         return response.status(201).end();
     },

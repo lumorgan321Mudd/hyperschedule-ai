@@ -12,6 +12,7 @@ export async function createAdvisorLink(args: {
     advisorId: APIv4.UserId;
     advisorUsername: string;
     advisorEmail: string;
+    advisorType?: APIv4.AdvisorType;
 }): Promise<APIv4.AdvisorLink> {
     const link: APIv4.AdvisorLink = {
         _id: uuid4("link") as APIv4.AdvisorLinkId,
@@ -21,6 +22,7 @@ export async function createAdvisorLink(args: {
         advisorUsername: args.advisorUsername,
         advisorEmail: args.advisorEmail,
         status: "pending",
+        ...(args.advisorType ? { advisorType: args.advisorType } : {}),
         requestedAt: new Date().toISOString(),
     };
     if (staticMode) {
@@ -144,4 +146,31 @@ export async function studentHasAcceptedAdvisorByEmail(
         advisorEmail: lc,
     });
     return found !== null;
+}
+
+/**
+ * Returns the accepted advisor link for student+email, or null.
+ */
+export async function getAcceptedLinkByStudentAndAdvisorEmail(
+    studentId: APIv4.UserId,
+    advisorEmail: string,
+): Promise<APIv4.AdvisorLink | null> {
+    const lc = advisorEmail.toLowerCase();
+    if (staticMode) {
+        for (const l of staticAdvisorLinks.values()) {
+            if (
+                l.studentId === studentId &&
+                l.status === "accepted" &&
+                l.advisorEmail.toLowerCase() === lc
+            ) {
+                return l;
+            }
+        }
+        return null;
+    }
+    return collections.advisorLinks.findOne({
+        studentId,
+        status: "accepted",
+        advisorEmail: lc,
+    });
 }

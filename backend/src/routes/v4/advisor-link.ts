@@ -79,6 +79,7 @@ advisorLinkApp.post(
             advisorId: advisor._id,
             advisorUsername: advisor.username ?? "",
             advisorEmail: advisor.email ?? advisor.eppn ?? "",
+            advisorType: parsed.data.advisorType,
         });
         return response
             .status(200)

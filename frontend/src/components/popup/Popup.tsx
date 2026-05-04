@@ -16,6 +16,7 @@ import CreateHsaBlock from "@components/popup/CreateHsaBlock";
 import ShareBlock from "@components/popup/ShareBlock";
 import ResetPassword from "@components/popup/ResetPassword";
 import ManageAdvisors from "@components/popup/ManageAdvisors";
+import SendHsaPlan from "@components/popup/SendHsaPlan";
 import { memo } from "react";
 
 function PopupBox(props: {
@@ -137,6 +138,12 @@ export default memo(function Popup() {
             return (
                 <PopupBox>
                     <ManageAdvisors />
+                </PopupBox>
+            );
+        case PopupOption.SendHsaPlan:
+            return (
+                <PopupBox>
+                    <SendHsaPlan />
                 </PopupBox>
             );
         default:

@@ -10,6 +10,9 @@ export type AdvisorLinkId = z.infer<typeof AdvisorLinkId>;
 export const AdvisorLinkStatus = z.enum(["pending", "accepted", "rejected"]);
 export type AdvisorLinkStatus = z.infer<typeof AdvisorLinkStatus>;
 
+export const AdvisorType = z.enum(["traditional", "hsa"]);
+export type AdvisorType = z.infer<typeof AdvisorType>;
+
 export const AdvisorLink = z.object({
     _id: AdvisorLinkId,
     studentId: UserId,
@@ -18,6 +21,7 @@ export const AdvisorLink = z.object({
     advisorUsername: z.string(),
     advisorEmail: z.string(),
     status: AdvisorLinkStatus,
+    advisorType: AdvisorType.optional(),
     requestedAt: z.string(),
     respondedAt: z.string().optional(),
 });
@@ -25,6 +29,7 @@ export type AdvisorLink = z.infer<typeof AdvisorLink>;
 
 export const RequestAdvisorLinkRequest = z.object({
     advisorUsername: Username,
+    advisorType: AdvisorType.optional(),
 });
 export type RequestAdvisorLinkRequest = z.infer<
     typeof RequestAdvisorLinkRequest

@@ -6,14 +6,19 @@ import {
     apiGetAdvisorLinks,
     apiRequestAdvisorLink,
 } from "@lib/api";
-import type * as APIv4 from "hyperschedule-shared/api/v4";
+import * as APIv4 from "hyperschedule-shared/api/v4";
+import { useUserStore } from "@hooks/store/user";
 import classNames from "classnames";
 import { toast } from "react-toastify";
 
 export default memo(function ManageAdvisors() {
+    const userSchool = useUserStore((s) => s.server?.school);
+    const isHmc = userSchool === APIv4.School.HMC;
     const [links, setLinks] = useState<APIv4.AdvisorLink[]>([]);
     const [loading, setLoading] = useState(true);
     const [username, setUsername] = useState("");
+    const [advisorType, setAdvisorType] =
+        useState<APIv4.AdvisorType>("traditional");
     const [submitting, setSubmitting] = useState(false);
 
     const refresh = useCallback(async () => {
@@ -41,7 +46,7 @@ export default memo(function ManageAdvisors() {
         }
         setSubmitting(true);
         try {
-            await apiRequestAdvisorLink(u);
+            await apiRequestAdvisorLink(u, isHmc ? advisorType : undefined);
             toast.success("Request sent");
             setUsername("");
             await refresh();
@@ -49,7 +54,7 @@ export default memo(function ManageAdvisors() {
             toast.error(e instanceof Error ? e.message : "Failed to send request");
         }
         setSubmitting(false);
-    }, [username, refresh]);
+    }, [username, advisorType, isHmc, refresh]);
 
     const handleDelete = useCallback(
         async (linkId: string, isPending: boolean) => {
@@ -91,6 +96,20 @@ export default memo(function ManageAdvisors() {
                     autoFocus
                     className={Css.input}
                 />
+                {isHmc && (
+                    <select
+                        value={advisorType}
+                        onChange={(e) =>
+                            setAdvisorType(e.target.value as APIv4.AdvisorType)
+                        }
+                        className={Css.input}
+                    >
+                        <option value="traditional">
+                            Traditional (first-year / major)
+                        </option>
+                        <option value="hsa">HSA</option>
+                    </select>
+                )}
                 <button
                     className={classNames(AppCss.defaultButton, Css.requestButton)}
                     onClick={handleRequest}
@@ -178,6 +197,11 @@ function LinkRow({
         <div className={Css.row}>
             <div className={Css.rowMain}>
                 <span className={Css.username}>{link.advisorUsername}</span>
+                {link.advisorType && (
+                    <span className={Css.email}>
+                        {link.advisorType === "hsa" ? "HSA" : "Traditional"}
+                    </span>
+                )}
                 {link.advisorEmail && (
                     <span className={Css.email}>{link.advisorEmail}</span>
                 )}

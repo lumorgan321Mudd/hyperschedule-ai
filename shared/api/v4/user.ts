@@ -241,3 +241,71 @@ export const DeleteScheduleSnapshotRequest = z.object({
 export type DeleteScheduleSnapshotRequest = z.infer<
     typeof DeleteScheduleSnapshotRequest
 >;
+
+// --- HSA Submission (HMC student → HSA advisor) ---
+
+export const HsaSubmissionId = z
+    .string()
+    .regex(/^hsa-sub~[A-Za-z0-9\-_]{22}$/);
+export type HsaSubmissionId = z.infer<typeof HsaSubmissionId>;
+
+export const HsaCourseLabel = z.enum(["planned", "alternate"]);
+export type HsaCourseLabel = z.infer<typeof HsaCourseLabel>;
+
+export const HsaCourseTag = z.enum(["concentration", "distribution"]);
+export type HsaCourseTag = z.infer<typeof HsaCourseTag>;
+
+export const HsaSubmissionCourse = z.object({
+    section: SectionIdentifier,
+    tag: HsaCourseTag,
+    label: HsaCourseLabel,
+});
+export type HsaSubmissionCourse = z.infer<typeof HsaSubmissionCourse>;
+
+export const HsaSubmissionApproval = ScheduleApproval;
+export type HsaSubmissionApproval = ScheduleApproval;
+
+export const HsaSubmission = z.object({
+    _id: HsaSubmissionId,
+    studentUserId: UserId,
+    studentUsername: z.string(),
+    advisorId: UserId,
+    advisorEmail: z.string(),
+    courses: HsaSubmissionCourse.array(),
+    sharedAt: z.string(),
+    approvals: HsaSubmissionApproval.array().optional(),
+});
+export type HsaSubmission = z.infer<typeof HsaSubmission>;
+
+export const ShareHsaSubmissionRequest = z.object({
+    advisorEmail: z.string().email(),
+    courses: HsaSubmissionCourse.array(),
+});
+export type ShareHsaSubmissionRequest = z.infer<
+    typeof ShareHsaSubmissionRequest
+>;
+
+export const ShareHsaSubmissionResponse = z.object({
+    submissionId: HsaSubmissionId,
+});
+export type ShareHsaSubmissionResponse = z.infer<
+    typeof ShareHsaSubmissionResponse
+>;
+
+export const GetHsaSubmissionsResponse = z.object({
+    submissions: HsaSubmission.array(),
+});
+export type GetHsaSubmissionsResponse = z.infer<
+    typeof GetHsaSubmissionsResponse
+>;
+
+export const HsaSubmissionApprovalRequest = z.object({
+    submissionId: HsaSubmissionId,
+    status: z.enum(["approved", "rejected"]),
+    comment: z.string(),
+    signature: z.string(),
+    advisorName: z.string(),
+});
+export type HsaSubmissionApprovalRequest = z.infer<
+    typeof HsaSubmissionApprovalRequest
+>;

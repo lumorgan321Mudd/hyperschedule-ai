@@ -8,6 +8,8 @@ import {
     apiApproveScheduleSnapshot,
     apiGetAdvisorLinks,
     apiRespondAdvisorLink,
+    apiGetAdvisorHsaSubmissions,
+    apiApproveHsaSubmission,
     fetchWithToast,
     schoolCodeFromEnum,
 } from "@lib/api";
@@ -71,23 +73,30 @@ export default memo(function AdvisorPortal() {
     const [scheduleSnapshots, setScheduleSnapshots] = useState<
         APIv4.SharedScheduleSnapshot[]
     >([]);
+    const [hsaSubmissions, setHsaSubmissions] = useState<
+        APIv4.HsaSubmission[]
+    >([]);
     const [linkRequests, setLinkRequests] = useState<APIv4.AdvisorLink[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
         null,
     );
+    const [selectedHsaId, setSelectedHsaId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     const fetchSnapshots = useCallback(async () => {
         try {
-            const [blockResult, scheduleResult, linksResult] = await Promise.all([
-                apiFetch.getSharedSnapshots(),
-                apiGetAdvisorScheduleSnapshots(),
-                apiGetAdvisorLinks(),
-            ]);
+            const [blockResult, scheduleResult, linksResult, hsaResult] =
+                await Promise.all([
+                    apiFetch.getSharedSnapshots(),
+                    apiGetAdvisorScheduleSnapshots(),
+                    apiGetAdvisorLinks(),
+                    apiGetAdvisorHsaSubmissions(),
+                ]);
             setSnapshots(blockResult.snapshots);
             setScheduleSnapshots(scheduleResult.snapshots);
             setLinkRequests(linksResult.asAdvisor);
+            setHsaSubmissions(hsaResult.submissions);
         } catch {
             toast.error("Failed to load shared plans");
         }
@@ -118,6 +127,9 @@ export default memo(function AdvisorPortal() {
     const selectedSnapshot = snapshots.find((s) => s._id === selectedId);
     const selectedScheduleSnapshot = scheduleSnapshots.find(
         (s) => s._id === selectedScheduleId,
+    );
+    const selectedHsaSubmission = hsaSubmissions.find(
+        (s) => s._id === selectedHsaId,
     );
 
     return (
@@ -225,6 +237,7 @@ export default memo(function AdvisorPortal() {
                             onClick={() => {
                                 setSelectedId(snap._id);
                                 setSelectedScheduleId(null);
+                                setSelectedHsaId(null);
                             }}
                         >
                             <span className={Css.snapshotName}>
@@ -286,6 +299,7 @@ export default memo(function AdvisorPortal() {
                                 onClick={() => {
                                     setSelectedScheduleId(snap._id);
                                     setSelectedId(null);
+                                    setSelectedHsaId(null);
                                 }}
                             >
                                 <span className={Css.snapshotName}>
@@ -298,6 +312,59 @@ export default memo(function AdvisorPortal() {
                                     Shared{" "}
                                     {new Date(
                                         snap.sharedAt,
+                                    ).toLocaleDateString()}
+                                </span>
+                                {latest && (
+                                    <span
+                                        className={classNames(
+                                            Css.statusBadge,
+                                            {
+                                                [Css.approved]:
+                                                    latest.status ===
+                                                    "approved",
+                                                [Css.rejected]:
+                                                    latest.status ===
+                                                    "rejected",
+                                            },
+                                        )}
+                                    >
+                                        {latest.status}
+                                    </span>
+                                )}
+                            </div>
+                        );
+                    })}
+
+                    {hsaSubmissions.length > 0 && (
+                        <h4 className={Css.sectionHeader}>HSA Submissions</h4>
+                    )}
+                    {hsaSubmissions.map((sub) => {
+                        const latest = sub.approvals?.length
+                            ? sub.approvals[sub.approvals.length - 1]
+                            : undefined;
+                        return (
+                            <div
+                                key={sub._id}
+                                className={classNames(Css.snapshotItem, {
+                                    [Css.active]: selectedHsaId === sub._id,
+                                })}
+                                onClick={() => {
+                                    setSelectedHsaId(sub._id);
+                                    setSelectedId(null);
+                                    setSelectedScheduleId(null);
+                                }}
+                            >
+                                <span className={Css.snapshotName}>
+                                    HSA Plan
+                                    <span className={Css.hsaBadge}>HSA</span>
+                                </span>
+                                <span className={Css.snapshotStudent}>
+                                    {sub.studentUsername}
+                                </span>
+                                <span className={Css.snapshotDate}>
+                                    Shared{" "}
+                                    {new Date(
+                                        sub.sharedAt,
                                     ).toLocaleDateString()}
                                 </span>
                                 {latest && (
@@ -335,11 +402,200 @@ export default memo(function AdvisorPortal() {
                         snapshot={selectedScheduleSnapshot}
                         onRefresh={fetchSnapshots}
                     />
+                ) : selectedHsaSubmission ? (
+                    <HsaSubmissionDetail
+                        submission={selectedHsaSubmission}
+                        onRefresh={fetchSnapshots}
+                    />
                 ) : (
                     <div className={Css.emptyDetail}>
                         <p>Select a shared plan or schedule to review.</p>
                     </div>
                 )}
+            </div>
+        </div>
+    );
+});
+
+const HsaSubmissionDetail = memo(function HsaSubmissionDetail({
+    submission,
+    onRefresh,
+}: {
+    submission: APIv4.HsaSubmission;
+    onRefresh: () => Promise<void>;
+}) {
+    const [comment, setComment] = useState("");
+    const [signature, setSignature] = useState("");
+    const [advisorName, setAdvisorName] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+
+    const latest = submission.approvals?.length
+        ? submission.approvals[submission.approvals.length - 1]
+        : undefined;
+
+    const planned = submission.courses.filter((c) => c.label === "planned");
+    const alternates = submission.courses.filter(
+        (c) => c.label === "alternate",
+    );
+
+    const handleAction = useCallback(
+        async (status: "approved" | "rejected") => {
+            if (!signature.trim() || !advisorName.trim()) {
+                toast.error("Please provide your name and signature");
+                return;
+            }
+            setSubmitting(true);
+            try {
+                const res = await apiApproveHsaSubmission(submission._id, {
+                    status,
+                    comment,
+                    signature,
+                    advisorName,
+                });
+                if (res.ok) {
+                    toast.success(
+                        status === "approved"
+                            ? "HSA plan approved"
+                            : "HSA plan revoked",
+                    );
+                    setComment("");
+                    setSignature("");
+                    setAdvisorName("");
+                    await onRefresh();
+                }
+            } catch {
+                toast.error("Failed to submit review");
+            }
+            setSubmitting(false);
+        },
+        [submission._id, comment, signature, advisorName, onRefresh],
+    );
+
+    const renderCourseList = (courses: APIv4.HsaSubmissionCourse[]) =>
+        courses.length === 0 ? (
+            <p className={Css.emptySections}>None</p>
+        ) : (
+            courses.map((c, i) => (
+                <div key={i} className={Css.sectionItem}>
+                    <span className={Css.sectionCode}>
+                        {stringifySectionCodeLong(c.section)}
+                    </span>
+                    <span className={Css.sectionSchool}>
+                        {c.tag === "concentration"
+                            ? "Concentration"
+                            : "Distribution"}
+                    </span>
+                </div>
+            ))
+        );
+
+    return (
+        <div className={Css.snapshotDetail}>
+            <div className={Css.detailHeader}>
+                <h2>HSA Plan</h2>
+                <p className={Css.detailMeta}>
+                    Student: {submission.studentUsername} | Shared{" "}
+                    {new Date(submission.sharedAt).toLocaleDateString()}
+                </p>
+            </div>
+
+            {submission.approvals && submission.approvals.length > 0 && (
+                <div className={Css.approvalHistory}>
+                    <h4>Review History</h4>
+                    {submission.approvals.map((approval, i) => (
+                        <div
+                            key={i}
+                            className={classNames(Css.approvalItem, {
+                                [Css.approved]:
+                                    approval.status === "approved",
+                                [Css.rejected]:
+                                    approval.status === "rejected",
+                            })}
+                        >
+                            <span className={Css.approvalStatus}>
+                                {approval.status === "approved"
+                                    ? "Approved"
+                                    : "Revoked"}
+                            </span>
+                            <span>by {approval.advisorName}</span>
+                            <span className={Css.approvalDate}>
+                                {new Date(
+                                    approval.timestamp,
+                                ).toLocaleDateString()}
+                            </span>
+                            {approval.comment && (
+                                <p className={Css.approvalComment}>
+                                    {approval.comment}
+                                </p>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <div className={Css.semesterGrid}>
+                <div className={Css.semesterColumn}>
+                    <h4 className={Css.semesterName}>Planned</h4>
+                    <div className={Css.sectionList}>
+                        {renderCourseList(planned)}
+                    </div>
+                </div>
+                <div className={Css.semesterColumn}>
+                    <h4 className={Css.semesterName}>Alternates</h4>
+                    <div className={Css.sectionList}>
+                        {renderCourseList(alternates)}
+                    </div>
+                </div>
+            </div>
+
+            <div className={Css.approvalForm}>
+                <h4>
+                    {latest?.status === "approved"
+                        ? "Revoke or update your decision"
+                        : "Submit your review"}
+                </h4>
+                <input
+                    type="text"
+                    placeholder="Your name"
+                    value={advisorName}
+                    onChange={(e) => setAdvisorName(e.target.value)}
+                    className={Css.formInput}
+                />
+                <textarea
+                    placeholder="Optional comments"
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    className={Css.formTextarea}
+                />
+                <input
+                    type="text"
+                    placeholder="Type your name as signature"
+                    value={signature}
+                    onChange={(e) => setSignature(e.target.value)}
+                    className={Css.formInput}
+                />
+                <div className={Css.formActions}>
+                    <button
+                        className={classNames(
+                            AppCss.defaultButton,
+                            Css.approveButton,
+                        )}
+                        disabled={submitting}
+                        onClick={() => handleAction("approved")}
+                    >
+                        Approve
+                    </button>
+                    <button
+                        className={classNames(
+                            AppCss.defaultButton,
+                            Css.rejectButton,
+                        )}
+                        disabled={submitting}
+                        onClick={() => handleAction("rejected")}
+                    >
+                        {latest?.status === "approved" ? "Revoke" : "Reject"}
+                    </button>
+                </div>
             </div>
         </div>
     );

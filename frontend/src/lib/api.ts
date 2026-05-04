@@ -300,6 +300,71 @@ export async function apiDeleteScheduleSnapshot(
     );
 }
 
+// HSA submissions
+
+export async function apiShareHsaSubmission(
+    body: APIv4.ShareHsaSubmissionRequest,
+): Promise<APIv4.ShareHsaSubmissionResponse> {
+    const res = await fetchWithToast(
+        `${__API_URL__}/v4/user/hsa-submission`,
+        {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        },
+    );
+    if (!res.ok) {
+        let message = "Failed to send HSA plan";
+        try {
+            const data = (await res.json()) as { error?: string };
+            if (data?.error) message = data.error;
+        } catch {}
+        throw new Error(message);
+    }
+    return res.json();
+}
+
+export async function apiGetMyHsaSubmissions(): Promise<APIv4.GetHsaSubmissionsResponse> {
+    const res = await fetchWithToast(
+        `${__API_URL__}/v4/user/my-hsa-submissions`,
+        { credentials: "include" },
+    );
+    return res.json();
+}
+
+export async function apiDeleteHsaSubmission(
+    submissionId: string,
+): Promise<Response> {
+    return fetchWithToast(
+        `${__API_URL__}/v4/user/hsa-submissions/${submissionId}`,
+        { method: "DELETE", credentials: "include" },
+    );
+}
+
+export async function apiGetAdvisorHsaSubmissions(): Promise<APIv4.GetHsaSubmissionsResponse> {
+    const res = await fetchWithToast(
+        `${__API_URL__}/v4/advisor/hsa-submissions`,
+        { credentials: "include" },
+    );
+    return res.json();
+}
+
+export async function apiApproveHsaSubmission(
+    submissionId: string,
+    body: Omit<APIv4.HsaSubmissionApprovalRequest, "submissionId">,
+): Promise<Response> {
+    return fetchWithToast(
+        `${__API_URL__}/v4/advisor/hsa-submissions/${submissionId}/approve`,
+        {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        },
+    );
+}
+
 export async function apiSetRequirementOverride(
     blockId: string,
     body: unknown,
@@ -330,12 +395,13 @@ export async function apiDeleteRequirementOverride(
 
 export async function apiRequestAdvisorLink(
     advisorUsername: string,
+    advisorType?: APIv4.AdvisorType,
 ): Promise<APIv4.RequestAdvisorLinkResponse> {
     const res = await fetchWithToast(`${__API_URL__}/v4/advisor-links/`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ advisorUsername }),
+        body: JSON.stringify({ advisorUsername, advisorType }),
     });
     if (!res.ok) {
         let message = "Failed to request link";

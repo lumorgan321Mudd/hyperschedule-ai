@@ -14,6 +14,7 @@ export const enum PopupOption {
     ShareBlock = "share-block",
     ResetPassword = "reset-password",
     ManageAdvisors = "manage-advisors",
+    SendHsaPlan = "send-hsa-plan",
 }
 
 export type Popup =
@@ -47,4 +48,5 @@ export type Popup =
           token: string;
       }
     | { option: PopupOption.ManageAdvisors }
+    | { option: PopupOption.SendHsaPlan }
     | null;

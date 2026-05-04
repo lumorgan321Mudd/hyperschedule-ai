@@ -5,6 +5,7 @@ import type {
     SharedBlockSnapshot,
     SharedScheduleSnapshot,
     AdvisorLink,
+    HsaSubmission,
 } from "hyperschedule-shared/api/v4";
 import { createLogger } from "../logger";
 
@@ -16,6 +17,7 @@ export const staticUsers = new Map<string, APIv4.ServerUser>();
 export const staticSnapshots = new Map<string, SharedBlockSnapshot>();
 export const staticScheduleSnapshots = new Map<string, SharedScheduleSnapshot>();
 export const staticAdvisorLinks = new Map<string, AdvisorLink>();
+export const staticHsaSubmissions = new Map<string, HsaSubmission>();
 
 export async function loadStaticSections(): Promise<void> {
     const filePath = join(process.cwd(), "..", "data", "sp2026-sections.json");
