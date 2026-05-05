@@ -1,7 +1,6 @@
 .container {
-    position: absolute;
-    bottom: 1rem;
-    right: 1rem;
+    grid-area: theme;
+    justify-self: end;
     border: none;
     cursor: pointer;
     border-radius: 2rem;
