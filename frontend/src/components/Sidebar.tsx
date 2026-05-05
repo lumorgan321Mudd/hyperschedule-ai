@@ -20,6 +20,9 @@ import { createPortal } from "react-dom";
 import { GITHUB_LINK } from "@lib/constants";
 import { memo } from "react";
 import { useActiveSchedule } from "@hooks/schedule";
+import { useAllTerms } from "@hooks/term";
+import { prefetchDataForTerm } from "@hooks/api/prefetch";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Sidebar() {
     const tab = useStore((store) => store.mainTab);
@@ -97,6 +100,7 @@ export default function Sidebar() {
                     (tab === MainTab.CourseSearch ||
                         tab === MainTab.Schedule) && (
                         <>
+                            <TermSelect />
                             <ScheduleSelect />
                             <SelectedList />
                             {tab === MainTab.Schedule && (
@@ -112,6 +116,51 @@ export default function Sidebar() {
         </>
     );
 }
+
+const TermSelect = memo(function TermSelect() {
+    const activeTerm = useUserStore((store) => store.activeTerm);
+    const setActiveTerm = useUserStore((store) => store.setActiveTerm);
+    const schedules = useUserStore((store) => store.schedules);
+    const setActiveScheduleId = useUserStore(
+        (store) => store.setActiveScheduleId,
+    );
+    const allTerms = useAllTerms();
+    const queryClient = useQueryClient();
+
+    if (!allTerms || allTerms.length === 0) return <></>;
+
+    const choices = allTerms.map(APIv4.stringifyTermIdentifier);
+    const selected = APIv4.stringifyTermIdentifier(activeTerm);
+
+    return (
+        <div className={Css.termSelect}>
+            <span className={Css.termLabel}>Term:</span>
+            <div className={Css.termDropdown}>
+                <Dropdown
+                    selected={selected}
+                    choices={choices}
+                    emptyPlaceholder="select term"
+                    onSelect={(index) => {
+                        const term = allTerms[index]!;
+                        void prefetchDataForTerm(term, queryClient);
+                        const matching = APIv4.getSchedulesSorted(
+                            schedules,
+                        ).find(
+                            ([, s]) =>
+                                s.term.term === term.term &&
+                                s.term.year === term.year,
+                        );
+                        if (matching) {
+                            setActiveScheduleId(matching[0]);
+                        } else {
+                            setActiveTerm(term);
+                        }
+                    }}
+                />
+            </div>
+        </div>
+    );
+});
 
 const ScheduleSelect = memo(function ScheduleSelect() {
     const activeSchedule = useActiveSchedule();

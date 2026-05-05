@@ -31,15 +31,15 @@
     min-width: calc(min(24em, 100vw));
 
     display: grid;
-    grid-template-areas: "toolbar" "minimap" "credits" "schedule-select" "rendering" "selected" "approval" "theme";
+    grid-template-areas: "toolbar" "minimap" "credits" "term-select" "schedule-select" "rendering" "selected" "approval" "theme";
     grid-row-gap: 0.5em;
 
     &[data-tab="CourseSearch"] {
-        grid-template-rows: auto 33.33% auto auto auto 1fr 0 auto;
+        grid-template-rows: auto 33.33% auto auto auto auto 1fr 0 auto;
     }
 
     &[data-tab="Schedule"] {
-        grid-template-rows: auto 0 auto auto auto 1fr auto auto;
+        grid-template-rows: auto 0 auto auto auto auto 1fr auto auto;
     }
 
     background-color: var(--bg-0);
@@ -85,6 +85,24 @@
 
     .renderingOptions {
         grid-area: rendering;
+    }
+
+    .termSelect {
+        grid-area: term-select;
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+
+        & .termLabel {
+            font-weight: 600;
+            font-size: 0.95em;
+            white-space: nowrap;
+        }
+
+        & .termDropdown {
+            flex: 1;
+            height: 1.75em;
+        }
     }
 
     .scheduleSelect {
