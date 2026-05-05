@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 //import { useUserQuery } from "@hooks/api/user";
 import { useUserStore } from "@hooks/store/user";
-import { useActiveSectionsLookup } from "@hooks/section";
+import { useScheduleSectionsLookup } from "@hooks/section";
 import * as APIv4 from "hyperschedule-shared/api/v4";
 
 import * as Lib from "@lib/schedule";
@@ -43,7 +43,7 @@ export function useActiveScheduleResolved(): {
     unconflicting: Set<Readonly<APIv4.Section>>;
 } {
     const entries = useActiveScheduleEntries();
-    const lookup = useActiveSectionsLookup();
+    const lookup = useScheduleSectionsLookup();
 
     const expandKey = useStore((store) => store.expandKey);
 

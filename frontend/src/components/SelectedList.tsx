@@ -1,5 +1,5 @@
 import { useActiveSchedule } from "@hooks/schedule";
-import { useActiveSectionsLookup } from "@hooks/section";
+import { useScheduleSectionsLookup } from "@hooks/section";
 
 import useStore from "@hooks/store";
 import { PopupOption } from "@lib/popup";
@@ -37,7 +37,7 @@ export default memo(function SelectedList() {
     const scheduleSetSections = useUserStore(
         (store) => store.scheduleSetSections,
     );
-    const sectionsLookup = useActiveSectionsLookup();
+    const sectionsLookup = useScheduleSectionsLookup();
     const [isDragging, setIsDragging] = useState<boolean>(false);
 
     // Load tag options for the user's school so each row can be tagged
@@ -226,7 +226,7 @@ const SectionEntry = memo(function SectionEntry(props: {
     unconflicting: boolean;
     tagOptions: TagOption[];
 }) {
-    const sectionsLookup = useActiveSectionsLookup();
+    const sectionsLookup = useScheduleSectionsLookup();
     //const attrsMutation = useScheduleSectionAttrsMutation();
     const theme = useStore((store) => store.theme);
     const setPopup = useStore((store) => store.setPopup);
